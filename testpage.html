@@ -1604,15 +1604,36 @@
                         <span className="font-bold text-sm text-slate-800 dark:text-slate-100">
                           {selectedStop.name_tc}
                         </span>
-                        <button
-                          onClick={() => fetchGmbEta(selectedStop)}
-                          className="p-1.5 text-slate-500 hover:text-emerald-500 transition"
-                          title="手動更新"
-                        >
-                          <i
-                            className={`fa-solid fa-rotate ${loadingEta ? "fa-spin" : ""}`}
-                          ></i>
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() =>
+                              toggleFavorite({
+                                id: `GMB-${region}-${selectedRoute.route_id}-${selectedStop.stop_seq}`,
+                                type: "GMB",
+                                region: region,
+                                routeId: selectedRoute.route_id,
+                                routeCode: selectedRoute.route_code,
+                                stopSeq: selectedStop.stop_seq,
+                                stopName: selectedStop.name_tc,
+                              })
+                            }
+                            className="p-1.5 text-amber-500 hover:scale-110 transition"
+                            title="加入最愛"
+                          >
+                            <i
+                              className={`${isFavorite(`GMB-${region}-${selectedRoute.route_id}-${selectedStop.stop_seq}`) ? "fa-solid" : "fa-regular"} fa-star text-lg`}
+                            ></i>
+                          </button>
+                          <button
+                            onClick={() => fetchGmbEta(selectedStop)}
+                            className="p-1.5 text-slate-500 hover:text-emerald-500 transition"
+                            title="手動更新"
+                          >
+                            <i
+                              className={`fa-solid fa-rotate ${loadingEta ? "fa-spin" : ""}`}
+                            ></i>
+                          </button>
+                        </div>
                       </div>
 
                       {loadingEta ? (
@@ -1669,6 +1690,211 @@
         );
       }
 
+      function FavoriteCard({ fav, toggleFavorite }) {
+        const [etaData, setEtaData] = useState([]);
+        const [loading, setLoading] = useState(true);
+
+        const fetchFavEta = useCallback(async () => {
+          setLoading(true);
+          try {
+            if (fav.type === "BUS") {
+              let url =
+                fav.company === "KMB"
+                  ? `https://data.etabus.gov.hk/v1/transport/kmb/eta/${fav.stopId}/${fav.route}/1`
+                  : `https://rt.data.gov.hk/v1/transport/citybus-nwfb/eta/ctb/${fav.stopId}/${fav.route}`;
+              const res = await fetch(url);
+              const data = await res.json();
+              if (data.data) {
+                setEtaData(data.data.filter((item) => item.eta).slice(0, 3));
+              } else {
+                setEtaData([]);
+              }
+            } else if (fav.type === "MTR") {
+              const res = await fetch(
+                `https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=${fav.line}&sta=${fav.stationCode}&lang=TC`
+              );
+              const data = await res.json();
+              const key = `${fav.line}-${fav.stationCode}`;
+              if (data.status === 1 && data.data && data.data[key]) {
+                const st = data.data[key];
+                const combined = [];
+                (st.UP || []).forEach((t) => combined.push({ ...t, dirName: "上行" }));
+                (st.DOWN || []).forEach((t) => combined.push({ ...t, dirName: "下行" }));
+                setEtaData(combined.slice(0, 4));
+              } else {
+                setEtaData([]);
+              }
+            } else if (fav.type === "GMB") {
+              const res = await fetch(
+                `https://data.etagmb.gov.hk/eta/route-stop/${fav.routeId}/1/${fav.stopSeq}`
+              );
+              const data = await res.json();
+              setEtaData((data.data?.eta || []).slice(0, 3));
+            }
+          } catch (err) {
+            console.error("Error loading favorite ETA:", err);
+            setEtaData([]);
+          } finally {
+            setLoading(false);
+          }
+        }, [fav]);
+
+        useEffect(() => {
+          fetchFavEta();
+          const interval = setInterval(fetchFavEta, 60000);
+          return () => clearInterval(interval);
+        }, [fetchFavEta]);
+
+        const getBadgeStyle = () => {
+          if (fav.type === "BUS") {
+            return fav.company === "KMB" ? "bg-red-600 text-white" : "bg-blue-600 text-white";
+          }
+          if (fav.type === "MTR") {
+            return "bg-red-800 text-white dark:bg-red-900";
+          }
+          if (fav.type === "GMB") {
+            return "bg-emerald-600 text-white";
+          }
+          return "bg-slate-600 text-white";
+        };
+
+        const getBadgeLabel = () => {
+          if (fav.type === "BUS") return `${fav.company} ${fav.route}`;
+          if (fav.type === "MTR") return `${fav.lineName} (${fav.line})`;
+          if (fav.type === "GMB") return `綠色小巴 ${fav.routeCode}`;
+          return "最愛車站";
+        };
+
+        return (
+          <div className="p-4 bg-slate-50 dark:bg-slate-700/40 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3 hover:shadow-md transition">
+            <div className="flex justify-between items-start gap-2 border-b border-slate-200/60 dark:border-slate-600 pb-2.5">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-extrabold ${getBadgeStyle()}`}>
+                    {getBadgeLabel()}
+                  </span>
+                  <span className="font-bold text-sm text-slate-800 dark:text-slate-100">
+                    {fav.stopName || fav.stationName}
+                  </span>
+                </div>
+                {fav.dest && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    往 {fav.dest}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={fetchFavEta}
+                  className="p-1.5 text-slate-400 hover:text-sky-500 transition text-xs"
+                  title="手動更新"
+                >
+                  <i className={`fa-solid fa-rotate ${loading ? "fa-spin" : ""}`}></i>
+                </button>
+                <button
+                  onClick={() => toggleFavorite(fav)}
+                  className="p-1.5 text-amber-500 hover:text-rose-500 transition"
+                  title="移除最愛"
+                >
+                  <i className="fa-solid fa-star text-lg"></i>
+                </button>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="py-3 text-center text-slate-400 text-xs">
+                <i className="fa-solid fa-spinner fa-spin mr-1.5 text-sky-500"></i>載入實時班次...
+              </div>
+            ) : etaData.length > 0 ? (
+              <div className="space-y-1.5">
+                {fav.type === "BUS" &&
+                  etaData.map((eta, idx) => {
+                    const remMins = calculateRemainingMinutes(eta.eta);
+                    return (
+                      <div
+                        key={idx}
+                        className="p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-600 flex justify-between items-center text-xs"
+                      >
+                        <span className="text-slate-600 dark:text-slate-300 font-medium truncate pr-2">
+                          往 {eta.dest_tc || fav.dest || "目的地"}
+                        </span>
+                        {remMins === null ? (
+                          <span className="text-slate-400">--</span>
+                        ) : remMins <= 0 ? (
+                          <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold rounded animate-pulse">
+                            即將到站
+                          </span>
+                        ) : (
+                          <span className="font-extrabold text-sky-600 dark:text-sky-400">
+                            {remMins} 分鐘
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                {fav.type === "MTR" &&
+                  etaData.map((train, idx) => {
+                    const remMins = calculateRemainingMinutes(train.time);
+                    const destName = MTR_STATION_NAMES[train.dest] || train.dest;
+                    return (
+                      <div
+                        key={idx}
+                        className="p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-600 flex justify-between items-center text-xs"
+                      >
+                        <span className="text-slate-600 dark:text-slate-300 font-medium truncate pr-2">
+                          [{train.dirName}] 往 {destName} ({train.plat}號月台)
+                        </span>
+                        {remMins === null ? (
+                          <span className="text-slate-400">--</span>
+                        ) : remMins <= 0 ? (
+                          <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold rounded animate-pulse">
+                            即將到達
+                          </span>
+                        ) : (
+                          <span className="font-extrabold text-sky-600 dark:text-sky-400">
+                            {remMins} 分鐘
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                {fav.type === "GMB" &&
+                  etaData.map((e, idx) => {
+                    const remMins = calculateRemainingMinutes(e.timestamp);
+                    return (
+                      <div
+                        key={idx}
+                        className="p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-600 flex justify-between items-center text-xs"
+                      >
+                        <span className="text-slate-600 dark:text-slate-300 font-medium">
+                          班次 {idx + 1}
+                        </span>
+                        {remMins === null ? (
+                          <span className="text-slate-400">--</span>
+                        ) : remMins <= 0 ? (
+                          <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold rounded animate-pulse">
+                            即將到達
+                          </span>
+                        ) : (
+                          <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+                            {remMins} 分鐘
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            ) : (
+              <div className="py-3 text-center text-slate-400 text-xs bg-white dark:bg-slate-800 rounded-lg">
+                未有即時班次數據或服務已結束
+              </div>
+            )}
+          </div>
+        );
+      }
+
       // Favorites View Component
       function FavoritesSection({ favorites, toggleFavorite }) {
         return (
@@ -1687,41 +1913,17 @@
                 <i className="fa-regular fa-star text-3xl text-slate-300 dark:text-slate-600"></i>
                 <p className="text-sm font-medium">尚未新增任何最愛車站</p>
                 <p className="text-xs">
-                  可以在「巴士」或「港鐵」頁面點擊星號標記常用車站。
+                  可以在「巴士」、「港鐵」或「專線小巴」頁面點擊星號標記常用車站。
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {favorites.map((fav) => (
-                  <div
+                  <FavoriteCard
                     key={fav.id}
-                    className="p-3.5 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold text-white ${fav.type === "BUS" ? "bg-red-600" : "bg-sky-600"}`}
-                        >
-                          {fav.type === "BUS" ? `${fav.company} ${fav.route}` : `${fav.lineName}`}
-                        </span>
-                        <span className="font-bold text-sm text-slate-800 dark:text-slate-100">
-                          {fav.stopName || fav.stationName}
-                        </span>
-                      </div>
-                      {fav.dest && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          往 {fav.dest}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => toggleFavorite(fav)}
-                      className="p-2 text-amber-500 hover:text-rose-500 transition"
-                      title="移除最愛"
-                    >
-                      <i className="fa-solid fa-star text-lg"></i>
-                    </button>
-                  </div>
+                    fav={fav}
+                    toggleFavorite={toggleFavorite}
+                  />
                 ))}
               </div>
             )}
