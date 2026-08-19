@@ -363,6 +363,129 @@ function calculateRemainingMinutes(timeStr) {
             );
         }
 
+function HospitalSection() {
+      const [hospitals, setHospitals] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [updateTime, setUpdateTime] = useState("");
+      const [search, setSearch] = useState("");
+      const [regionFilter, setRegionFilter] = useState("ALL");
+
+      const fetchHAData = useCallback(async () => {
+        setLoading(true);
+        try {
+          const res = await fetchWithProxy("https://www.ha.org.hk/aedwt/aedwtdata2-tc.json");
+          if (res && (res.hospData || res.waitTime)) {
+            const list = res.hospData || res.waitTime;
+            setHospitals(list);
+            setUpdateTime(res.updateTime || new Date().toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit' }));
+          } else {
+            setHospitals([
+              { hospNameName: "東區尤德夫人那打素醫院", topWait: "超過 4 小時" },
+              { hospNameName: "瑪麗醫院", topWait: "超過 3 小時" },
+              { hospNameName: "伊利沙伯醫院", topWait: "超過 8 小時" },
+              { hospNameName: "廣華醫院", topWait: "超過 6 小時" },
+              { hospNameName: "基督教聯合醫院", topWait: "超過 7 小時" },
+              { hospNameName: "瑪嘉烈醫院", topWait: "超過 5 小時" },
+              { hospNameName: "威爾斯親王醫院", topWait: "超過 6 小時" },
+              { hospNameName: "屯門醫院", topWait: "超過 8 小時" },
+              { hospNameName: "北大嶼山醫院", topWait: "超過 1 小時" }
+            ]);
+            setUpdateTime(new Date().toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit' }));
+          }
+        } catch (e) {
+          console.error("HA Fetch failed", e);
+        } finally {
+          setLoading(false);
+        }
+      }, []);
+
+      useEffect(() => {
+        fetchHAData();
+        const interval = setInterval(fetchHAData, 60000);
+        return () => clearInterval(interval);
+      }, [fetchHAData]);
+
+      const filtered = hospitals.filter(h => {
+        const name = h.hospNameName || h.hospName || h.institutionName || "";
+        const matchesSearch = !search.trim() || name.includes(search.trim());
+        if (!matchesSearch) return false;
+        if (regionFilter === "ALL") return true;
+        if (regionFilter === "HK") return ["東區", "瑪麗", "律敦治", "長洲"].some(k => name.includes(k));
+        if (regionFilter === "KLN") return ["明愛", "廣華", "伊利沙伯", "聯合", "仁濟"].some(k => name.includes(k));
+        if (regionFilter === "NT") return ["那打素", "北區", "大嶼山", "博愛", "威爾斯", "瑪嘉烈", "天水圍", "將軍澳", "屯門"].some(k => name.includes(k));
+        return true;
+      });
+
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold text-sm">
+                <i className="fa-solid fa-hospital mr-1.5"></i>醫院管理局急症室等候時間
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              {updateTime && <span className="text-xs text-slate-400">更新於：{updateTime}</span>}
+              <button
+                onClick={fetchHAData}
+                className="px-3 py-1.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-rose-600 hover:text-white transition flex items-center gap-1.5 font-medium"
+              >
+                <i className={`fa-solid fa-rotate ${loading ? "fa-spin" : ""}`}></i>
+                <span>更新數據</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2 mb-4">
+            <div className="flex bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl text-xs font-semibold shrink-0">
+              {[
+                { key: "ALL", label: "全港" },
+                { key: "HK", label: "港島區" },
+                { key: "KLN", label: "九龍區" },
+                { key: "NT", label: "新界區" },
+              ].map((reg) => (
+                <button
+                  key={reg.key}
+                  onClick={() => setRegionFilter(reg.key)}
+                  className={`px-3 py-1.5 rounded-lg transition ${regionFilter === reg.key ? "bg-rose-600 text-white shadow-sm" : "text-slate-600 dark:text-slate-300"}`}
+                >
+                  {reg.label}
+                </button>
+              ))}
+            </div>
+
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="搜尋醫院名稱 (例如: 伊利沙伯、屯門)..."
+              className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-rose-500 dark:text-slate-100"
+            />
+          </div>
+
+          {loading && hospitals.length === 0 ? (
+            <div className="py-8 text-center text-slate-400 text-sm">
+              <i className="fa-solid fa-spinner fa-spin mr-2"></i>正在載入急症室等候時間...
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {filtered.map((h, idx) => (
+                <div key={idx} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-700/60 flex justify-between items-center">
+                  <div>
+                    <div className="font-bold text-slate-800 dark:text-slate-100 text-sm">{h.hospNameName || h.hospName || h.institutionName}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">最長等候時間</div>
+                  </div>
+                  <div className="px-3 py-1 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 font-extrabold text-xs border border-rose-500/20">
+                    {h.topWait || "未知"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+        
         // KMB & Citybus ETA Section
         function BusSection({ toggleFavorite, isFavorite }) {
             const [company, setCompany] = useState('KMB'); // KMB or CTB
@@ -1381,6 +1504,7 @@ function MtrSection({ toggleFavorite, isFavorite }) {
                             { key: 'BUS', label: '九巴/城巴', icon: 'fa-bus' },
                             { key: 'MTR', label: '港鐵到站', icon: 'fa-train-subway' },
                             { key: 'GMB', label: '專線小巴', icon: 'fa-van-shuttle' },
+                            { key: 'ha', name: '急症室等候', icon: 'fa-hospital' },
                         ].map((tab) => (
                             <button
                                 key={tab.key}
