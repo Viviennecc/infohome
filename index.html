@@ -1362,6 +1362,7 @@
                     <nav className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
                         {[
                             { key: 'ALL', label: '全部檢視', icon: 'fa-table-cells' },
+                            { key: 'FAV', label: '我的最愛', icon: 'fa-star' },
                             { key: 'WEATHER', label: '天文台天氣', icon: 'fa-cloud-sun' },
                             { key: 'BUS', label: '九巴/城巴', icon: 'fa-bus' },
                             { key: 'MTR', label: '港鐵到站', icon: 'fa-train-subway' },
@@ -1380,6 +1381,13 @@
 
                     {/* Dynamic Modules Rendering */}
                     <main className="space-y-6">
+                        {activeTab === 'FAV' && favorites.length === 0 && (
+                            <div className="p-8 text-center text-slate-400 text-sm bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                                <i className="fa-regular fa-star text-3xl mb-3 block text-amber-400"></i>
+                                尚未加入任何最愛站點。請在各交通分頁中點擊星號加入！
+                            </div>
+                        )}
+
                         {(activeTab === 'ALL' || activeTab === 'WEATHER') && (
                             <WeatherSection />
                         )}
