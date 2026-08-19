@@ -48,124 +48,130 @@
         const { useState, useEffect, useCallback, useMemo } = React;
 
         // Complete MTR Line and Station dataset
-        const MTR_DATA = {
-            KTL: {
-                name: '觀塘綫', color: 'bg-emerald-600', code: 'KTL',
-                stations: [
-                    { code: 'WHA', name: '黃埔' }, { code: 'HOM', name: '何文田' }, { code: 'YMT', name: '油麻地' },
-                    { code: 'MOK', name: '旺角' }, { code: 'PRE', name: '太子' }, { code: 'SKM', name: '石硤尾' },
-                    { code: 'KOT', name: '九龍塘' }, { code: 'LOF', name: '樂富' }, { code: 'WTS', name: '黃大仙' },
-                    { code: 'DIH', name: '鑽石山' }, { code: 'CHH', name: '彩虹' }, { code: 'KOB', name: '九龍灣' },
-                    { code: 'NTK', name: '牛頭角' }, { code: 'KWT', name: '觀塘' }, { code: 'LAT', name: '藍田' },
-                    { code: 'YAT', name: '油塘' }, { code: 'TIK', name: '調景嶺' }
-                ]
-            },
-            ISL: {
-                name: '港島綫', color: 'bg-blue-600', code: 'ISL',
-                stations: [
-                    { code: 'KET', name: '堅尼地城' }, { code: 'HKU', name: '香港大學' }, { code: 'SYP', name: '西營盤' },
-                    { code: 'SHW', name: '上環' }, { code: 'CEN', name: '中環' }, { code: 'ADM', name: '金鐘' },
-                    { code: 'WAC', name: '灣仔' }, { code: 'CAB', name: '銅鑼灣' }, { code: 'TIH', name: '天后' },
-                    { code: 'FOH', name: '炮台山' }, { code: 'NOP', name: '北角' }, { code: 'QUB', name: '鰂魚涌' },
-                    { code: 'TAK', name: '太古' }, { code: 'SWH', name: '西灣河' }, { code: 'SKW', name: '筲箕灣' },
-                    { code: 'HFC', name: '杏花邨' }, { code: 'CHW', name: '柴灣' }
-                ]
-            },
-            TWL: {
-                name: '荃灣綫', color: 'bg-red-600', code: 'TWL',
-                stations: [
-                    { code: 'CEN', name: '中環' }, { code: 'ADM', name: '金鐘' }, { code: 'TST', name: '尖沙咀' },
-                    { code: 'JOR', name: '佐敦' }, { code: 'YMT', name: '油麻地' }, { code: 'MOK', name: '旺角' },
-                    { code: 'PRE', name: '太子' }, { code: 'SSP', name: '深水埗' }, { code: 'CSW', name: '長沙灣' },
-                    { code: 'LCK', name: '荔枝角' }, { code: 'MEI', name: '美孚' }, { code: 'KWF', name: '葵芳' },
-                    { code: 'KHI', name: '葵興' }, { code: 'TWO', name: '大窩口' }, { code: 'TSW', name: '荃灣' }
-                ]
-            },
-            SIL: {
-                name: '南港島綫', color: 'bg-lime-500', code: 'SIL',
-                stations: [
-                    { code: 'ADM', name: '金鐘' }, { code: 'OCP', name: '海洋公園' }, { code: 'WCH', name: '黃竹坑' },
-                    { code: 'LET', name: '利東' }, { code: 'SOH', name: '海怡半島' }
-                ]
-            },
-            TKL: {
-                name: '將軍澳綫', color: 'bg-purple-600', code: 'TKL',
-                stations: [
-                    { code: 'NOP', name: '北角' }, { code: 'QUB', name: '鰂魚涌' }, { code: 'YAT', name: '油塘' },
-                    { code: 'TIK', name: '調景嶺' }, { code: 'TKO', name: '將軍澳' }, { code: 'LHA', name: '坑口' },
-                    { code: 'POA', name: '寶琳' }, { code: 'LOP', name: '康城' }
-                ]
-            },
-            EAL: {
-                name: '東鐵綫', color: 'bg-sky-500', code: 'EAL',
-                stations: [
-                    { code: 'ADM', name: '金鐘' }, { code: 'EXC', name: '會展' }, { code: 'HUH', name: '紅磡' },
-                    { code: 'MKK', name: '旺角東' }, { code: 'KOT', name: '九龍塘' }, { code: 'TAW', name: '大圍' },
-                    { code: 'SHT', name: '沙田' }, { code: 'FOT', name: '火炭' }, { code: 'RAC', name: '馬場' },
-                    { code: 'UNI', name: '大學' }, { code: 'TAP', name: '大埔墟' }, { code: 'TWO', name: '太和' },
-                    { code: 'FAN', name: '粉嶺' }, { code: 'SHS', name: '上水' }, { code: 'LOW', name: '羅湖' },
-                    { code: 'LKM', name: '落馬洲' }
-                ]
-            },
-            TML: {
-                name: '屯馬綫', color: 'bg-amber-600', code: 'TML',
-                stations: [
-                    { code: 'TUM', name: '屯門' }, { code: 'SIH', name: '兆康' }, { code: 'TIS', name: '天水圍' },
-                    { code: 'LOP', name: '朗屏' }, { code: 'YUL', name: '元朗' }, { code: 'KSR', name: '錦上路' },
-                    { code: 'TWW', name: '荃灣西' }, { code: 'MEI', name: '美孚' }, { code: 'NAC', name: '南昌' },
-                    { code: 'AUS', name: '柯士甸' }, { code: 'EAS', name: '尖東' }, { code: 'HUH', name: '紅磡' },
-                    { code: 'HOM', name: '何文田' }, { code: 'TKW', name: '土瓜灣' }, { code: 'SUW', name: '宋皇臺' },
-                    { code: 'KAT', name: '啟德' }, { code: 'DIH', name: '鑽石山' }, { code: 'HIK', name: '顯徑' },
-                    { code: 'TAW', name: '大圍' }, { code: 'CKT', name: '車公廟' }, { code: 'STW', name: '沙田圍' },
-                    { code: 'CIO', name: '第一城' }, { code: 'SHM', name: '石門' }, { code: 'TSH', name: '大水坑' },
-                    { code: 'HEO', name: '恒安' }, { code: 'MOS', name: '馬鞍山' }, { code: 'WKS', name: '烏溪沙' }
-                ]
-            },
-            TCL: {
-                name: '東涌綫', color: 'bg-orange-500', code: 'TCL',
-                stations: [
-                    { code: 'HOK', name: '香港' }, { code: 'KOW', name: '九龍' }, { code: 'OLY', name: '奧運' },
-                    { code: 'NAC', name: '南昌' }, { code: 'LAK', name: '荔景' }, { code: 'TSY', name: '青衣' },
-                    { code: 'SUN', name: '欣澳' }, { code: 'TAW', name: '東涌' }
-                ]
-            },
-            AEL: {
-                name: '機場快綫', color: 'bg-teal-600', code: 'AEL',
-                stations: [
-                    { code: 'HOK', name: '香港' }, { code: 'KOW', name: '九龍' }, { code: 'TSY', name: '青衣' },
-                    { code: 'AIR', name: '機場' }, { code: 'AWE', name: '博覽館' }
-                ]
-            }
-        };
+const MTR_DATA = {
+    KTL: {
+        name: '觀塘綫', color: 'bg-emerald-600', code: 'KTL',
+        stations: [
+            { code: 'WHA', name: '黃埔' }, { code: 'HOM', name: '何文田' }, { code: 'YMT', name: '油麻地' },
+            { code: 'MOK', name: '旺角' }, { code: 'PRE', name: '太子' }, { code: 'SKM', name: '石硤尾' },
+            { code: 'KOT', name: '九龍塘' }, { code: 'LOF', name: '樂富' }, { code: 'WTS', name: '黃大仙' },
+            { code: 'DIH', name: '鑽石山' }, { code: 'CHH', name: '彩虹' }, { code: 'KOB', name: '九龍灣' },
+            { code: 'NTK', name: '牛頭角' }, { code: 'KWT', name: '觀塘' }, { code: 'LAT', name: '藍田' },
+            { code: 'YAT', name: '油塘' }, { code: 'TIK', name: '調景嶺' }
+        ]
+    },
+    ISL: {
+        name: '港島綫', color: 'bg-blue-600', code: 'ISL',
+        stations: [
+            { code: 'KET', name: '堅尼地城' }, { code: 'HKU', name: '香港大學' }, { code: 'SYP', name: '西營盤' },
+            { code: 'SHW', name: '上環' }, { code: 'CEN', name: '中環' }, { code: 'ADM', name: '金鐘' },
+            { code: 'WAC', name: '灣仔' }, { code: 'CAB', name: '銅鑼灣' }, { code: 'TIH', name: '天后' },
+            { code: 'FOH', name: '炮台山' }, { code: 'NOP', name: '北角' }, { code: 'QUB', name: '鰂魚涌' },
+            { code: 'TAK', name: '太古' }, { code: 'SWH', name: '西灣河' }, { code: 'SKW', name: '筲箕灣' },
+            { code: 'HFC', name: '杏花邨' }, { code: 'CHW', name: '柴灣' }
+        ]
+    },
+    TWL: {
+        name: '荃灣綫', color: 'bg-red-600', code: 'TWL',
+        stations: [
+            { code: 'CEN', name: '中環' }, { code: 'ADM', name: '金鐘' }, { code: 'TST', name: '尖沙咀' },
+            { code: 'JOR', name: '佐敦' }, { code: 'YMT', name: '油麻地' }, { code: 'MOK', name: '旺角' },
+            { code: 'PRE', name: '太子' }, { code: 'SSP', name: '深水埗' }, { code: 'CSW', name: '長沙灣' },
+            { code: 'LCK', name: '荔枝角' }, { code: 'MEI', name: '美孚' }, { code: 'KWF', name: '葵芳' },
+            { code: 'KHI', name: '葵興' }, { code: 'TWO', name: '大窩口' }, { code: 'TSW', name: '荃灣' }
+        ]
+    },
+    SIL: {
+        name: '南港島綫', color: 'bg-lime-500', code: 'SIL',
+        stations: [
+            { code: 'ADM', name: '金鐘' }, { code: 'OCP', name: '海洋公園' }, { code: 'WCH', name: '黃竹坑' },
+            { code: 'LET', name: '利東' }, { code: 'SOH', name: '海怡半島' }
+        ]
+    },
+    TKL: {
+        name: '將軍澳綫', color: 'bg-purple-600', code: 'TKL',
+        stations: [
+            { code: 'NOP', name: '北角' }, { code: 'QUB', name: '鰂魚涌' }, { code: 'YAT', name: '油塘' },
+            { code: 'TIK', name: '調景嶺' }, { code: 'TKO', name: '將軍澳' }, { code: 'LHA', name: '坑口' },
+            { code: 'POA', name: '寶琳' }, { code: 'LOP', name: '康城' }
+        ]
+    },
+    EAL: {
+        name: '東鐵綫', color: 'bg-sky-500', code: 'EAL',
+        stations: [
+            { code: 'ADM', name: '金鐘' }, { code: 'EXC', name: '會展' }, { code: 'HUH', name: '紅磡' },
+            { code: 'MKK', name: '旺角東' }, { code: 'KOT', name: '九龍塘' }, { code: 'TAW', name: '大圍' },
+            { code: 'SHT', name: '沙田' }, { code: 'FOT', name: '火炭' }, { code: 'RAC', name: '馬場' },
+            { code: 'UNI', name: '大學' }, { code: 'TAP', name: '大埔墟' }, { code: 'TWO', name: '太和' },
+            { code: 'FAN', name: '粉嶺' }, { code: 'SHS', name: '上水' }, { code: 'LOW', name: '羅湖' },
+            { code: 'LKM', name: '落馬洲' }
+        ]
+    },
+    TML: {
+        name: '屯馬綫', color: 'bg-amber-600', code: 'TML',
+        stations: [
+            { code: 'TUM', name: '屯門' }, { code: 'SIH', name: '兆康' }, { code: 'TIS', name: '天水圍' },
+            { code: 'LOP', name: '朗屏' }, { code: 'YUL', name: '元朗' }, { code: 'KSR', name: '錦上路' },
+            { code: 'TWW', name: '荃灣西' }, { code: 'MEI', name: '美孚' }, { code: 'NAC', name: '南昌' },
+            { code: 'AUS', name: '柯士甸' }, { code: 'EAS', name: '尖東' }, { code: 'HUH', name: '紅磡' },
+            { code: 'HOM', name: '何文田' }, { code: 'TKW', name: '土瓜灣' }, { code: 'SUW', name: '宋皇臺' },
+            { code: 'KAT', name: '啟德' }, { code: 'DIH', name: '鑽石山' }, { code: 'HIK', name: '顯徑' },
+            { code: 'TAW', name: '大圍' }, { code: 'CKT', name: '車公廟' }, { code: 'STW', name: '沙田圍' },
+            { code: 'CIO', name: '第一城' }, { code: 'SHM', name: '石門' }, { code: 'TSH', name: '大水坑' },
+            { code: 'HEO', name: '恒安' }, { code: 'MOS', name: '馬鞍山' }, { code: 'WKS', name: '烏溪沙' }
+        ]
+    },
+    TCL: {
+        name: '東涌綫', color: 'bg-orange-500', code: 'TCL',
+        stations: [
+            { code: 'HOK', name: '香港' }, { code: 'KOW', name: '九龍' }, { code: 'OLY', name: '奧運' },
+            { code: 'NAC', name: '南昌' }, { code: 'LAK', name: '荔景' }, { code: 'TSY', name: '青衣' },
+            { code: 'SUN', name: '欣澳' }, { code: 'TAW', name: '東涌' }
+        ]
+    },
+    AEL: {
+        name: '機場快綫', color: 'bg-teal-600', code: 'AEL',
+        stations: [
+            { code: 'HOK', name: '香港' }, { code: 'KOW', name: '九龍' }, { code: 'TSY', name: '青衣' },
+            { code: 'AIR', name: '機場' }, { code: 'AWE', name: '博覽館' }
+        ]
+    },
+    DRL: {
+        name: '迪士尼綫', color: 'bg-pink-500', code: 'DRL',
+        stations: [
+            { code: 'SUN', name: '欣澳' }, { code: 'DIS', name: '迪士尼' }
+        ]
+    }
+};
 
-        // Lookup map for converting station codes (e.g., 'POA') to Chinese names
-        const MTR_STATION_NAMES = {};
-        Object.values(MTR_DATA).forEach(line => {
-            line.stations.forEach(sta => {
-                MTR_STATION_NAMES[sta.code] = sta.name;
-            });
-        });
-        MTR_STATION_NAMES['DIS'] = '迪士尼';
+// Lookup map for converting station codes to Chinese names
+const MTR_STATION_NAMES = {};
+Object.values(MTR_DATA).forEach(line => {
+    line.stations.forEach(sta => {
+        MTR_STATION_NAMES[sta.code] = sta.name;
+    });
+});
+MTR_STATION_NAMES['DIS'] = '迪士尼';
 
-        // Helper function to format numeric weather values to decimal places
-        const formatNumberDecimal = (val) => {
-            if (val === null || val === undefined || val === '' || isNaN(val)) return '--';
-            return Number(val).toFixed(1);
-        };
+// Helper function to format numeric weather values to decimal places
+const formatNumberDecimal = (val) => {
+    if (val === null || val === undefined || val === '' || isNaN(val)) return '--';
+    return Number(val).toFixed(1);
+};
 
-        // Calculate remaining minutes from timestamp
-        function calculateRemainingMinutes(timeStr) {
-            if (!timeStr) return null;
-            try {
-                const targetTime = new Date(timeStr).getTime();
-                const now = new Date().getTime();
-                const diffMs = targetTime - now;
-                const diffMins = Math.floor(diffMs / 60000);
-                return diffMins;
-            } catch (e) {
-                return null;
-            }
-        }
+// Calculate remaining minutes from timestamp safely
+function calculateRemainingMinutes(timeStr) {
+    if (!timeStr) return null;
+    try {
+        const targetTime = new Date(timeStr).getTime();
+        const now = new Date().getTime();
+        const diffMs = targetTime - now;
+        const diffMins = Math.floor(diffMs / 60000);
+        return diffMins;
+    } catch (e) {
+        return null;
+    }
+}
 
         // HKO Weather Component
         function WeatherSection() {
@@ -696,209 +702,214 @@
         }
 
         // MTR Real-time Schedule Section
-        function MtrSection({ toggleFavorite, isFavorite }) {
-            const [selectedLine, setSelectedLine] = useState('KTL');
-            const [selectedStation, setSelectedStation] = useState(MTR_DATA['KTL'].stations[0]);
-            const [schedule, setSchedule] = useState({ UP: [], DOWN: [] });
-            const [loading, setLoading] = useState(false);
-            const [error, setError] = useState(false);
+function MtrSection({ toggleFavorite, isFavorite }) {
+    const [selectedLine, setSelectedLine] = useState('KTL');
+    const [selectedStation, setSelectedStation] = useState(MTR_DATA['KTL'].stations[0]);
+    const [schedule, setSchedule] = useState({ UP: [], DOWN: [] });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(false);
 
-            const lineInfo = MTR_DATA[selectedLine];
+    const lineInfo = MTR_DATA[selectedLine];
 
-            const fetchMtrSchedule = useCallback(async () => {
-                if (!selectedLine || !selectedStation) return;
-                setLoading(true);
-                setError(false);
-                try {
-                    const res = await fetch(`https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=${selectedLine}&sta=${selectedStation.code}&lang=TC`);
-                    const data = await res.json();
-                    
-                    const key = `${selectedLine}-${selectedStation.code}`;
-                    if (data.status === 1 && data.data && data.data[key]) {
-                        const stationData = data.data[key];
-                        setSchedule({
-                            UP: stationData.UP || [],
-                            DOWN: stationData.DOWN || []
-                        });
-                    } else {
-                        setSchedule({ UP: [], DOWN: [] });
-                    }
-                } catch (err) {
-                    console.error("Error fetching MTR schedule:", err);
-                    setError(true);
-                    setSchedule({ UP: [], DOWN: [] });
-                } finally {
-                    setLoading(false);
+    const fetchMtrSchedule = useCallback(async () => {
+        if (!selectedLine || !selectedStation) return;
+        setLoading(true);
+        setError(false);
+        try {
+            const res = await fetch(`https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=${selectedLine}&sta=${selectedStation.code}&lang=TC`);
+            const data = await res.json();
+            
+            const key = `${selectedLine}-${selectedStation.code}`;
+            // Check if status is 1 (normal service) and data exists for the specific station key
+            if (data && data.status === 1 && data.data && data.data[key]) {
+                const stationData = data.data[key];
+                setSchedule({
+                    UP: Array.isArray(stationData.UP) ? stationData.UP : [],
+                    DOWN: Array.isArray(stationData.DOWN) ? stationData.DOWN : []
+                });
+            } else {
+                // Handle special train arrangements or empty data states gracefully
+                setSchedule({ UP: [], DOWN: [] });
+                if (data && data.status === 0) {
+                    console.warn("MTR Special Service Arrangement:", data.message);
                 }
-            }, [selectedLine, selectedStation]);
-
-            // Auto refresh MTR schedule every 60 seconds
-            useEffect(() => {
-                fetchMtrSchedule();
-                const interval = setInterval(fetchMtrSchedule, 60000);
-                return () => clearInterval(interval);
-            }, [fetchMtrSchedule]);
-
-            const handleSelectLine = (lineKey) => {
-                setSelectedLine(lineKey);
-                setSelectedStation(MTR_DATA[lineKey].stations[0]);
-            };
-
-            return (
-                <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
-                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                        <div className="flex items-center gap-2">
-                            <span className="p-2 rounded-xl bg-red-800/10 text-red-800 dark:text-red-400 font-bold text-sm">
-                                <i className="fa-solid fa-train-subway mr-1"></i>港鐵 MTR
-                            </span>
-                            <span className="text-xs text-slate-400">重鐵路綫實時列車班次</span>
-                        </div>
-                        <button
-                            onClick={fetchMtrSchedule}
-                            className="p-1.5 text-xs text-slate-500 hover:text-sky-500 transition flex items-center gap-1"
-                        >
-                            <i className={`fa-solid fa-rotate ${loading ? 'fa-spin' : ''}`}></i>
-                            <span>更新</span>
-                        </button>
-                    </div>
-
-                    {/* MTR Lines Selector Carousel */}
-                    <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-thin">
-                        {Object.keys(MTR_DATA).map((lineKey) => {
-                            const l = MTR_DATA[lineKey];
-                            return (
-                                <button
-                                    key={lineKey}
-                                    onClick={() => handleSelectLine(lineKey)}
-                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-2 border ${selectedLine === lineKey ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent' : 'bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600'}`}
-                                >
-                                    <span className={`w-2.5 h-2.5 rounded-full ${l.color}`}></span>
-                                    <span>{l.name}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* Station Selector Grid */}
-                    <div className="mb-4">
-                        <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">選擇車站</h4>
-                        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1 scrollbar-thin">
-                            {lineInfo.stations.map((sta) => (
-                                <button
-                                    key={sta.code}
-                                    onClick={() => setSelectedStation(sta)}
-                                    className={`px-3 py-1 rounded-lg text-xs font-medium transition border ${selectedStation.code === sta.code ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-50 dark:bg-slate-700/30 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'}`}
-                                >
-                                    {sta.name}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Selected Station Schedule Display */}
-                    <div className="p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl border border-slate-200/80 dark:border-slate-700">
-                        <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-600 mb-3">
-                            <div className="flex items-center gap-2.5">
-                                <span className={`w-3 h-3 rounded-full ${lineInfo.color}`}></span>
-                                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
-                                    {lineInfo.name} • {selectedStation.name}站
-                                </h3>
-                            </div>
-                            <button
-                                onClick={() => toggleFavorite({
-                                    id: `MTR-${selectedLine}-${selectedStation.code}`,
-                                    type: 'MTR',
-                                    line: selectedLine,
-                                    lineName: lineInfo.name,
-                                    stationCode: selectedStation.code,
-                                    stationName: selectedStation.name
-                                })}
-                                className="p-1.5 text-amber-500 hover:scale-110 transition"
-                                title="加入最愛"
-                            >
-                                <i className={`${isFavorite(`MTR-${selectedLine}-${selectedStation.code}`) ? 'fa-solid' : 'fa-regular'} fa-star text-lg`}></i>
-                            </button>
-                        </div>
-
-                        {loading ? (
-                            <div className="p-8 text-center text-slate-400 text-xs">
-                                <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入港鐵實時班次中...
-                            </div>
-                        ) : error ? (
-                            <div className="p-6 text-center text-rose-500 text-xs">
-                                暫時未能取得港鐵班次數據
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* UP Direction */}
-                                <div className="space-y-2">
-                                    <h5 className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                                        <i className="fa-solid fa-arrow-up text-sky-500"></i> 上行方向班次
-                                    </h5>
-                                    {schedule.UP.length > 0 ? (
-                                        schedule.UP.map((train, i) => {
-                                            const remMins = calculateRemainingMinutes(train.time);
-                                            const destName = MTR_STATION_NAMES[train.dest] || train.dest;
-                                            return (
-                                                <div key={i} className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs">
-                                                    <div>
-                                                        <span className="font-bold text-slate-700 dark:text-slate-200">往 {destName}</span>
-                                                        <span className="ml-2 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 rounded text-[10px]">月台 {train.plat}</span>
-                                                    </div>
-                                                    <div>
-                                                        {remMins === null ? (
-                                                            <span className="text-slate-400">--</span>
-                                                        ) : remMins <= 0 ? (
-                                                            <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 font-bold rounded animate-pulse">即將到達</span>
-                                                        ) : (
-                                                            <span className="font-extrabold text-sky-600 dark:text-sky-400">{remMins} 分鐘</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="p-4 text-center text-slate-400 text-xs bg-white dark:bg-slate-800 rounded-xl">暫無班次數據</div>
-                                    )}
-                                </div>
-
-                                {/* DOWN Direction */}
-                                <div className="space-y-2">
-                                    <h5 className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                                        <i className="fa-solid fa-arrow-down text-indigo-500"></i> 下行方向班次
-                                    </h5>
-                                    {schedule.DOWN.length > 0 ? (
-                                        schedule.DOWN.map((train, i) => {
-                                            const remMins = calculateRemainingMinutes(train.time);
-                                            const destName = MTR_STATION_NAMES[train.dest] || train.dest;
-                                            return (
-                                                <div key={i} className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs">
-                                                    <div>
-                                                        <span className="font-bold text-slate-700 dark:text-slate-200">往 {destName}</span>
-                                                        <span className="ml-2 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 rounded text-[10px]">月台 {train.plat}</span>
-                                                    </div>
-                                                    <div>
-                                                        {remMins === null ? (
-                                                            <span className="text-slate-400">--</span>
-                                                        ) : remMins <= 0 ? (
-                                                            <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 font-bold rounded animate-pulse">即將到達</span>
-                                                        ) : (
-                                                            <span className="font-extrabold text-sky-600 dark:text-sky-400">{remMins} 分鐘</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="p-4 text-center text-slate-400 text-xs bg-white dark:bg-slate-800 rounded-xl">暫無班次數據</div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
+            }
+        } catch (err) {
+            console.error("Error fetching MTR schedule:", err);
+            setError(true);
+            setSchedule({ UP: [], DOWN: [] });
+        } finally {
+            setLoading(false);
         }
+    }, [selectedLine, selectedStation]);
+
+    // Auto refresh MTR schedule every 60 seconds
+    useEffect(() => {
+        fetchMtrSchedule();
+        const interval = setInterval(fetchMtrSchedule, 60000);
+        return () => clearInterval(interval);
+    }, [fetchMtrSchedule]);
+
+    const handleSelectLine = (lineKey) => {
+        setSelectedLine(lineKey);
+        setSelectedStation(MTR_DATA[lineKey].stations[0]);
+    };
+
+    return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                    <span className="p-2 rounded-xl bg-red-800/10 text-red-800 dark:text-red-400 font-bold text-sm">
+                        <i className="fa-solid fa-train-subway mr-1"></i>港鐵 MTR
+                    </span>
+                    <span className="text-xs text-slate-400">重鐵路綫實時列車班次</span>
+                </div>
+                <button
+                    onClick={fetchMtrSchedule}
+                    className="p-1.5 text-xs text-slate-500 hover:text-sky-500 transition flex items-center gap-1"
+                >
+                    <i className={`fa-solid fa-rotate ${loading ? 'fa-spin' : ''}`}></i>
+                    <span>更新</span>
+                </button>
+            </div>
+
+            {/* MTR Lines Selector Carousel */}
+            <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-thin">
+                {Object.keys(MTR_DATA).map((lineKey) => {
+                    const l = MTR_DATA[lineKey];
+                    return (
+                        <button
+                            key={lineKey}
+                            onClick={() => handleSelectLine(lineKey)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-2 border ${selectedLine === lineKey ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent' : 'bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600'}`}
+                        >
+                            <span className={`w-2.5 h-2.5 rounded-full ${l.color}`}></span>
+                            <span>{l.name}</span>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Station Selector Grid */}
+            <div className="mb-4">
+                <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">選擇車站</h4>
+                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1 scrollbar-thin">
+                    {lineInfo.stations.map((sta) => (
+                        <button
+                            key={sta.code}
+                            onClick={() => setSelectedStation(sta)}
+                            className={`px-3 py-1 rounded-lg text-xs font-medium transition border ${selectedStation.code === sta.code ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-50 dark:bg-slate-700/30 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'}`}
+                        >
+                            {sta.name}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Selected Station Schedule Display */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl border border-slate-200/80 dark:border-slate-700">
+                <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-600 mb-3">
+                    <div className="flex items-center gap-2.5">
+                        <span className={`w-3 h-3 rounded-full ${lineInfo.color}`}></span>
+                        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                            {lineInfo.name} • {selectedStation.name}站
+                        </h3>
+                    </div>
+                    <button
+                        onClick={() => toggleFavorite({
+                            id: `MTR-${selectedLine}-${selectedStation.code}`,
+                            type: 'MTR',
+                            line: selectedLine,
+                            lineName: lineInfo.name,
+                            stationCode: selectedStation.code,
+                            stationName: selectedStation.name
+                        })}
+                        className="p-1.5 text-amber-500 hover:scale-110 transition"
+                        title="加入最愛"
+                    >
+                        <i className={`${isFavorite(`MTR-${selectedLine}-${selectedStation.code}`) ? 'fa-solid' : 'fa-regular'} fa-star text-lg`}></i>
+                    </button>
+                </div>
+
+                {loading ? (
+                    <div className="p-8 text-center text-slate-400 text-xs">
+                        <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入港鐵實時班次中...
+                    </div>
+                ) : error ? (
+                    <div className="p-6 text-center text-rose-500 text-xs">
+                        暫時未能取得港鐵班次數據
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* UP Direction */}
+                        <div className="space-y-2">
+                            <h5 className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                <i className="fa-solid fa-arrow-up text-sky-500"></i> 上行方向班次
+                            </h5>
+                            {schedule.UP.length > 0 ? (
+                                schedule.UP.map((train, i) => {
+                                    const remMins = calculateRemainingMinutes ? calculateRemainingMinutes(train.time) : null;
+                                    const destName = MTR_STATION_NAMES[train.dest] || train.dest;
+                                    return (
+                                        <div key={i} className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs">
+                                            <div>
+                                                <span className="font-bold text-slate-700 dark:text-slate-200">往 {destName}</span>
+                                                <span className="ml-2 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 rounded text-[10px]">月台 {train.plat}</span>
+                                            </div>
+                                            <div>
+                                                {remMins === null ? (
+                                                    <span className="text-slate-400">--</span>
+                                                ) : remMins <= 0 ? (
+                                                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 font-bold rounded animate-pulse">即將到達</span>
+                                                ) : (
+                                                    <span className="font-extrabold text-sky-600 dark:text-sky-400">{remMins} 分鐘</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="p-4 text-center text-slate-400 text-xs bg-white dark:bg-slate-800 rounded-xl">暫無班次數據</div>
+                            )}
+                        </div>
+
+                        {/* DOWN Direction */}
+                        <div className="space-y-2">
+                            <h5 className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                <i className="fa-solid fa-arrow-down text-indigo-500"></i> 下行方向班次
+                            </h5>
+                            {schedule.DOWN.length > 0 ? (
+                                schedule.DOWN.map((train, i) => {
+                                    const remMins = calculateRemainingMinutes ? calculateRemainingMinutes(train.time) : null;
+                                    const destName = MTR_STATION_NAMES[train.dest] || train.dest;
+                                    return (
+                                        <div key={i} className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs">
+                                            <div>
+                                                <span className="font-bold text-slate-700 dark:text-slate-200">往 {destName}</span>
+                                                <span className="ml-2 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 rounded text-[10px]">月台 {train.plat}</span>
+                                            </div>
+                                            <div>
+                                                {remMins === null ? (
+                                                    <span className="text-slate-400">--</span>
+                                                ) : remMins <= 0 ? (
+                                                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 font-bold rounded animate-pulse">即將到達</span>
+                                                ) : (
+                                                    <span className="font-extrabold text-sky-600 dark:text-sky-400">{remMins} 分鐘</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="p-4 text-center text-slate-400 text-xs bg-white dark:bg-slate-800 rounded-xl">暫無班次數據</div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
 
        // Green Minibus Section
         function GmbSection({ toggleFavorite, isFavorite }) {
