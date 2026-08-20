@@ -988,7 +988,7 @@ function MtrSection({ toggleFavorite, isFavorite }) {
                 try {
                     const res = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${selectedRoute.route_id}/1/${stop.stop_seq}`);
                     const data = await res.json();
-                    setEtaData(data.data?.eta || []);
+                    setEtaData(data.data[0].eta || []);
                 } catch (err) {
                     console.error("Error fetching GMB ETA:", err);
                     setEtaData([]);
@@ -1103,7 +1103,7 @@ function MtrSection({ toggleFavorite, isFavorite }) {
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     onClick={() => toggleFavorite({
-                                                        id: `GMB-${selectedRoute.route_id}-${selectedStop.stop_seq}`,
+                                                        id: `GMB-${selectedRoute.route_id}-${selectedStop.stop_Seq}`,
                                                         type: 'GMB',
                                                         routeId: selectedRoute.route_id,
                                                         routeCode: selectedRoute.route_code,
@@ -1193,7 +1193,7 @@ function MtrSection({ toggleFavorite, isFavorite }) {
                             setEtaList([...up.slice(0, 1), ...down.slice(0, 1)]);
                         }
                     } else if (fav.type === 'GMB') {
-                        const res = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${fav.routeId}/1/${fav.stop_seq}`);
+                        const res = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${fav.routeId}/1/${fav.stopseq}`);
                         const data = await res.json();
                         setEtaList(data.data?.[0]?.eta ? data.data[0].eta.slice(0, 2) : []);
                     }
