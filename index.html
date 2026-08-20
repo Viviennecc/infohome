@@ -956,8 +956,28 @@ function MtrSection({ toggleFavorite, isFavorite }) {
                 return routesList.filter(r => r.toUpperCase().includes(searchCode.trim().toUpperCase()));
             }, [routesList, searchCode]);
 
-            // Select GMB Route 
-            const handleSelectRoute = async (routeCode) => { setLoadingStops(true); setSelectedStop(null); setEtaData([]); try { const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${routeCode}`); const data = await res.json(); const routeInfo = data.data?.[0]; if (routeInfo) { setSelectedRoute(routeInfo); // Fetch stops for seq 1 const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${routeInfo.route_id}/1`); const sData = await sRes.json(); setRouteStops(sData.data?.route_stops || []); } } catch (err) { console.error("Error fetching GMB stops:", err); } finally { setLoadingStops(false); } };
+            // Select GMB Route
+            const handleSelectRoute = async (routeCode) => {
+                setLoadingStops(true);
+                setSelectedStop(null);
+                setEtaData([]);
+                try {
+                    const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${routeCode}`);
+                    const data = await res.json();
+                    const routeInfo = data.data?.[0];
+                    if (routeInfo) {
+                        setSelectedRoute(routeInfo);
+                        // Fetch stops for seq 1
+                        const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${routeInfo.route_id}/1`);
+                        const sData = await sRes.json();
+                        setRouteStops(sData.data?.route_stops || []);
+                    }
+                } catch (err) {
+                    console.error("Error fetching GMB stops:", err);
+                } finally {
+                    setLoadingStops(false);
+                }
+            };
 
 
             // Fetch GMB Real-time ETA
