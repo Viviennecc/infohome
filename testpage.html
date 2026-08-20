@@ -397,16 +397,30 @@
             setUpdateTime(res.updateTime || new Date().toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit' }));
           } else {
             setHospitals([
-              { hospNameName: "東區尤德夫人那打素醫院", topWait: "超過 4 小時" },
-              { hospNameName: "瑪麗醫院", topWait: "超過 3 小時" },
-              { hospNameName: "伊利沙伯醫院", topWait: "超過 8 小時" },
-              { hospNameName: "廣華醫院", topWait: "超過 6 小時" },
-              { hospNameName: "基督教聯合醫院", topWait: "超過 7 小時" },
-              { hospNameName: "瑪嘉烈醫院", topWait: "超過 5 小時" },
-              { hospNameName: "威爾斯親王醫院", topWait: "超過 6 小時" },
-              { hospNameName: "屯門醫院", topWait: "超過 8 小時" },
-              { hospNameName: "北大嶼山醫院", topWait: "超過 1 小時" }
-            ]);
+  // Hong Kong Island
+  { hospNameName: "東區尤德夫人那打素醫院", topWait: "超過 4 小時" },
+  { hospNameName: "瑪麗醫院", topWait: "超過 3 小時" },
+  { hospNameName: "律敦治醫院", topWait: "超過 2 小時" },
+  { hospNameName: "長洲醫院", topWait: "第一時間" },
+
+  // Kowloon
+  { hospNameName: "伊利沙伯醫院", topWait: "超過 8 小時" },
+  { hospNameName: "廣華醫院", topWait: "超過 6 小時" },
+  { hospNameName: "基督教聯合醫院", topWait: "超過 7 小時" },
+  { hospNameName: "瑪嘉烈醫院", topWait: "超過 5 小時" },
+  { hospNameName: "明愛醫院", topWait: "超過 3 小時" },
+
+  // New Territories
+  { hospNameName: "威爾斯親王醫院", topWait: "超過 6 小時" },
+  { hospNameName: "屯門醫院", topWait: "超過 8 小時" },
+  { hospNameName: "北大嶼山醫院", topWait: "超過 1 小時" },
+  { hospNameName: "將軍澳醫院", topWait: "超過 4 小時" },
+  { hospNameName: "北區醫院", topWait: "超過 3 小時" },
+  { hospNameName: "博愛醫院", topWait: "超過 4 小時" },
+  { hospNameName: "天水圍醫院", topWait: "超過 5 小時" },
+  { hospNameName: "仁濟醫院", topWait: "超過 4 小時" },
+  { hospNameName: "雅麗氏何妙齡那打素醫院", topWait: "超過 3 小時" }
+]);
             setUpdateTime(new Date().toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit' }));
           }
         } catch (e) {
