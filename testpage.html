@@ -1,1008 +1,1598 @@
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>香港實時天氣、急症室等候時間及公共交通資訊平台</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  <!-- React 18 & ReactDOM -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <!-- Babel for JSX -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>香港天氣報告、交通及公立醫院急症室輪候時間網頁</title>
 
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            kmb: '#E31B23',
-            ctb: '#005FA9',
-            mtr: '#990000',
-            gmb: '#008000',
-          }
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- React 18 & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Tailwind Configuration for Dark Mode -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        kmb: '#E31B23',
+                        ctb: '#005FA9',
+                        mtr: '#990000',
+                        gmb: '#008000',
+                        hae: '#DC2626'
+                    }
+                }
+            }
         }
-      }
-    };
-  </script>
+    </script>
 
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700;900&display=swap');
-    body {
-      font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    .scrollbar-thin::-webkit-scrollbar {
-      height: 6px;
-      width: 6px;
-    }
-    .scrollbar-thin::-webkit-scrollbar-track {
-      background: rgba(0, 0, 0, 0.05);
-      border-radius: 8px;
-    }
-    .scrollbar-thin::-webkit-scrollbar-thumb {
-      background: rgba(0, 0, 0, 0.2);
-      border-radius: 8px;
-    }
-
-    /* 放大字體 30px 模式設定 */
-    .large-font-mode, 
-    .large-font-mode p, 
-    .large-font-mode span, 
-    .large-font-mode div, 
-    .large-font-mode button, 
-    .large-font-mode input, 
-    .large-font-mode select,
-    .large-font-mode a,
-    .large-font-mode li,
-    .large-font-mode h1,
-    .large-font-mode h2,
-    .large-font-mode h3,
-    .large-font-mode h4 {
-      font-size: 30px !important;
-      line-height: 1.5 !important;
-    }
-    .large-font-mode .text-4xl {
-      font-size: 46px !important;
-    }
-    .large-font-mode i {
-      font-size: 28px !important;
-    }
-  </style>
+    <!-- Global Font Size 30px Override -->
+    <style>
+        *, *::before, *::after {
+            font-size: 30px !important;
+            line-height: 1.3 !important;
+        }
+    </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
-  <div id="root"></div>
+    <div id="root"></div>
 
-  <script type="text/babel">
-    const { useState, useEffect, useCallback, useMemo } = React;
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useMemo } = React;
 
-    // Helper: Number Decimal Formatter
-    function formatNumberDecimal(val) {
-      if (val === undefined || val === null || val === "" || isNaN(val)) return "--";
-      return (Math.round(Number(val) * 10) / 10).toFixed(1);
-    }
+        // Complete MTR Line and Station dataset
+        const MTR_DATA = {
+            KTL: {
+                name: '觀塘綫', color: 'bg-emerald-600', code: 'KTL',
+                stations: [
+                    { code: 'WHA', name: '黃埔' }, { code: 'HOM', name: '何文田' }, { code: 'YMT', name: '油麻地' },
+                    { code: 'MOK', name: '旺角' }, { code: 'PRE', name: '太子' }, { code: 'SKM', name: '石硤尾' },
+                    { code: 'KOT', name: '九龍塘' }, { code: 'LOF', name: '樂富' }, { code: 'WTS', name: '黃大仙' },
+                    { code: 'DIH', name: '鑽石山' }, { code: 'CHH', name: '彩虹' }, { code: 'KOB', name: '九龍灣' },
+                    { code: 'NTK', name: '牛頭角' }, { code: 'KWT', name: '觀塘' }, { code: 'LAT', name: '藍田' },
+                    { code: 'YAT', name: '油塘' }, { code: 'TIK', name: '調景嶺' }
+                ]
+            },
+            ISL: {
+                name: '港島綫', color: 'bg-blue-600', code: 'ISL',
+                stations: [
+                    { code: 'KET', name: '堅尼地城' }, { code: 'HKU', name: '香港大學' }, { code: 'SYP', name: '西營盤' },
+                    { code: 'SHW', name: '上環' }, { code: 'CEN', name: '中環' }, { code: 'ADM', name: '金鐘' },
+                    { code: 'WAC', name: '灣仔' }, { code: 'CAB', name: '銅鑼灣' }, { code: 'TIH', name: '天后' },
+                    { code: 'FOH', name: '炮台山' }, { code: 'NOP', name: '北角' }, { code: 'QUB', name: '鰂魚涌' },
+                    { code: 'TAK', name: '太古' }, { code: 'SWH', name: '西灣河' }, { code: 'SKW', name: '筲箕灣' },
+                    { code: 'HFC', name: '杏花邨' }, { code: 'CHW', name: '柴灣' }
+                ]
+            },
+            TWL: {
+                name: '荃灣綫', color: 'bg-red-600', code: 'TWL',
+                stations: [
+                    { code: 'CEN', name: '中環' }, { code: 'ADM', name: '金鐘' }, { code: 'TST', name: '尖沙咀' },
+                    { code: 'JOR', name: '佐敦' }, { code: 'YMT', name: '油麻地' }, { code: 'MOK', name: '旺角' },
+                    { code: 'PRE', name: '太子' }, { code: 'SSP', name: '深水埗' }, { code: 'CSW', name: '長沙灣' },
+                    { code: 'LCK', name: '荔枝角' }, { code: 'MEI', name: '美孚' }, { code: 'LAK', name: '荔景' }, { code: 'KWF', name: '葵芳' },
+                    { code: 'KWH', name: '葵興' }, { code: 'TWH', name: '大窩口' }, { code: 'TSW', name: '荃灣' }
+                ]
+            },
+            SIL: {
+                name: '南港島綫', color: 'bg-lime-500', code: 'SIL',
+                stations: [
+                    { code: 'ADM', name: '金鐘' }, { code: 'OCP', name: '海洋公園' }, { code: 'WCH', name: '黃竹坑' },
+                    { code: 'LET', name: '利東' }, { code: 'SOH', name: '海怡半島' }
+                ]
+            },
+            TKL: {
+                name: '將軍澳綫', color: 'bg-purple-600', code: 'TKL',
+                stations: [
+                    { code: 'NOP', name: '北角' }, { code: 'QUB', name: '鰂魚涌' }, { code: 'YAT', name: '油塘' },
+                    { code: 'TIK', name: '調景嶺' }, { code: 'TKO', name: '將軍澳' }, { code: 'LHA', name: '坑口' },
+                    { code: 'POA', name: '寶琳' }, { code: 'LHP', name: '康城' }
+                ]
+            },
+            EAL: {
+                name: '東鐵綫', color: 'bg-sky-500', code: 'EAL',
+                stations: [
+                    { code: 'ADM', name: '金鐘' }, { code: 'EXC', name: '會展' }, { code: 'HUH', name: '紅磡' },
+                    { code: 'MKK', name: '旺角東' }, { code: 'KOT', name: '九龍塘' }, { code: 'TAW', name: '大圍' },
+                    { code: 'SHT', name: '沙田' }, { code: 'FOT', name: '火炭' }, { code: 'RAC', name: '馬場' },
+                    { code: 'UNI', name: '大學' }, { code: 'TAP', name: '大埔墟' }, { code: 'TWO', name: '太和' },
+                    { code: 'FAN', name: '粉嶺' }, { code: 'SHS', name: '上水' }, { code: 'LOW', name: '羅湖' },
+                    { code: 'LMC', name: '落馬洲' }
+                ]
+            },
+            TML: {
+                name: '屯馬綫', color: 'bg-amber-600', code: 'TML',
+                stations: [
+                    { code: 'TUM', name: '屯門' }, { code: 'SIH', name: '兆康' }, { code: 'TIS', name: '天水圍' },
+                    { code: 'LOP', name: '朗屏' }, { code: 'YUL', name: '元朗' }, { code: 'KSR', name: '錦上路' },
+                    { code: 'TWW', name: '荃灣西' }, { code: 'MEF', name: '美孚' }, { code: 'NAC', name: '南昌' },
+                    { code: 'AUS', name: '柯士甸' }, { code: 'ETS', name: '尖東' }, { code: 'HUH', name: '紅磡' },
+                    { code: 'HOM', name: '何文田' }, { code: 'TKW', name: '土瓜灣' }, { code: 'SUW', name: '宋皇臺' },
+                    { code: 'KAT', name: '啟德' }, { code: 'DIH', name: '鑽石山' }, { code: 'HIK', name: '顯徑' },
+                    { code: 'TAW', name: '大圍' }, { code: 'CKT', name: '車公廟' }, { code: 'STW', name: '沙田圍' },
+                    { code: 'CIO', name: '第一城' }, { code: 'SHM', name: '石門' }, { code: 'TSH', name: '大水坑' },
+                    { code: 'HEO', name: '恒安' }, { code: 'MOS', name: '馬鞍山' }, { code: 'WKS', name: '烏溪沙' }
+                ]
+            },
+            TCL: {
+                name: '東涌綫', color: 'bg-orange-500', code: 'TCL',
+                stations: [
+                    { code: 'HOK', name: '香港' }, { code: 'KOW', name: '九龍' }, { code: 'OLY', name: '奧運' },
+                    { code: 'NAC', name: '南昌' }, { code: 'LAK', name: '荔景' }, { code: 'TSY', name: '青衣' },
+                    { code: 'SUN', name: '欣澳' }, { code: 'TUC', name: '東涌' }
+                ]
+            },
+            AEL: {
+                name: '機場快綫', color: 'bg-teal-600', code: 'AEL',
+                stations: [
+                    { code: 'HOK', name: '香港' }, { code: 'KOW', name: '九龍' }, { code: 'TSY', name: '青衣' },
+                    { code: 'AIR', name: '機場' }, { code: 'AWE', name: '博覽館' }
+                ]
+            },
+            DRL: {
+                name: '迪士尼綫', color: 'bg-pink-500', code: 'DRL',
+                stations: [
+                    { code: 'SUN', name: '欣澳' }, { code: 'DIS', name: '迪士尼' }
+                ]
+            }
+        };
 
-    // Proxy Fetch Helper to bypass CORS and prevent cached response
-    async function fetchWithProxy(url) {
-      const timestamp = Date.now();
-      const separator = url.includes('?') ? '&' : '?';
-      const cacheBustUrl = `${url}${separator}_ts=${timestamp}`;
+        const MTR_STATION_NAMES = {};
+        Object.values(MTR_DATA).forEach(line => {
+            line.stations.forEach(sta => {
+                MTR_STATION_NAMES[sta.code] = sta.name;
+            });
+        });
+        MTR_STATION_NAMES['DIS'] = '迪士尼';
 
-      const targets = [
-        cacheBustUrl,
-        `https://corsproxy.io/?${encodeURIComponent(cacheBustUrl)}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(cacheBustUrl)}`
-      ];
+        const formatNumberDecimal = (val) => {
+            if (val === null || val === undefined || val === '' || isNaN(val)) return '--';
+            return Number(val).toFixed(1);
+        };
 
-      for (const t of targets) {
-        try {
-          const res = await fetch(t, { cache: 'no-cache' });
-          if (res.ok) {
-            const text = await res.text();
+        function calculateRemainingMinutes(timeStr) {
+            if (!timeStr) return null;
             try {
-              return JSON.parse(text);
+                const targetTime = new Date(timeStr).getTime();
+                const now = new Date().getTime();
+                const diffMs = targetTime - now;
+                const diffMins = Math.floor(diffMs / 60000);
+                return diffMins;
             } catch (e) {
-              return text;
+                return null;
             }
-          }
-        } catch (e) {
-          // ignore & try next proxy
         }
-      }
-      return null;
-    }
 
-    // Complete MTR Line and Station dataset
-    const MTR_DATA = {
-      KTL: { name: "觀塘綫", color: "bg-emerald-600", stations: [{ code: "WHA", name: "黃埔" }, { code: "HOM", name: "何文田" }, { code: "YMT", name: "油麻地" }, { code: "MOK", name: "旺角" }, { code: "PRE", name: "太子" }, { code: "SKM", name: "石硤尾" }, { code: "KOT", name: "九龍塘" }, { code: "LOF", name: "樂富" }, { code: "WTS", name: "黃大仙" }, { code: "DIH", name: "鑽石山" }, { code: "CHH", name: "彩虹" }, { code: "KOB", name: "九龍灣" }, { code: "NTK", name: "牛頭角" }, { code: "KWT", name: "觀塘" }, { code: "LAT", name: "藍田" }, { code: "YAT", name: "油塘" }, { code: "TIK", name: "調景嶺" }] },
-      ISL: { name: "港島綫", color: "bg-blue-600", stations: [{ code: "KET", name: "堅尼地城" }, { code: "HKU", name: "香港大學" }, { code: "SYP", name: "西營盤" }, { code: "SHW", name: "上環" }, { code: "CEN", name: "中環" }, { code: "ADM", name: "金鐘" }, { code: "WAC", name: "灣仔" }, { code: "CAB", name: "銅邏灣" }, { code: "TIH", name: "天后" }, { code: "FOH", name: "炮台山" }, { code: "NOP", name: "北角" }, { code: "QUB", name: "鰂魚涌" }, { code: "TAK", name: "太古" }, { code: "SWH", name: "西灣河" }, { code: "SKW", name: "筲箕灣" }, { code: "HFC", name: "杏花邨" }, { code: "CHW", name: "柴灣" }] },
-      TWL: { name: "荃灣綫", color: "bg-red-600", stations: [{ code: "CEN", name: "中環" }, { code: "ADM", name: "金鐘" }, { code: "TST", name: "尖沙咀" }, { code: "JOR", name: "佐敦" }, { code: "YMT", name: "油麻地" }, { code: "MOK", name: "旺角" }, { code: "PRE", name: "太子" }, { code: "SSP", name: "深水埗" }, { code: "CSW", name: "長沙灣" }, { code: "LCK", name: "荔枝角" }, { code: "MEI", name: "美孚" }, { code: "KWF", name: "葵芳" }, { code: "KHI", name: "葵興" }, { code: "TWO", name: "大窩口" }, { code: "TSW", name: "荃灣" }] },
-      SIL: { name: "南港島綫", color: "bg-lime-500", stations: [{ code: "ADM", name: "金鐘" }, { code: "OCP", name: "海洋公園" }, { code: "WCH", name: "黃竹坑" }, { code: "LET", name: "利東" }, { code: "SOH", name: "海怡半島" }] },
-      TKL: { name: "將軍澳綫", color: "bg-purple-600", stations: [{ code: "NOP", name: "北角" }, { code: "QUB", name: "鰂魚涌" }, { code: "YAT", name: "油塘" }, { code: "TIK", name: "調景嶺" }, { code: "TKO", name: "將軍澳" }, { code: "LHA", name: "坑口" }, { code: "POA", name: "寶琳" }, { code: "LOP", name: "康城" }] },
-      EAL: { name: "東鐵綫", color: "bg-sky-500", stations: [{ code: "ADM", name: "金鐘" }, { code: "EXC", name: "會展" }, { code: "HUH", name: "紅磡" }, { code: "MKK", name: "旺角東" }, { code: "KOT", name: "九龍塘" }, { code: "TAW", name: "大圍" }, { code: "SHT", name: "沙田" }, { code: "FOT", name: "火炭" }, { code: "RAC", name: "馬場" }, { code: "UNI", name: "大學" }, { code: "TAP", name: "大埔墟" }, { code: "TWO", name: "太和" }, { code: "FAN", name: "粉嶺" }, { code: "SHS", name: "上水" }, { code: "LOW", name: "羅湖" }, { code: "LKM", name: "落馬洲" }] },
-      TML: { name: "屯馬綫", color: "bg-amber-600", stations: [{ code: "TUM", name: "屯門" }, { code: "SIH", name: "兆康" }, { code: "TIS", name: "天水圍" }, { code: "LOP", name: "朗屏" }, { code: "YUL", name: "元朗" }, { code: "KSR", name: "錦上路" }, { code: "TWW", name: "荃灣西" }, { code: "MEI", name: "美孚" }, { code: "NAC", name: "南昌" }, { code: "AUS", name: "柯士甸" }, { code: "EAS", name: "尖東" }, { code: "HUH", name: "紅磡" }, { code: "HOM", name: "何文田" }, { code: "TKW", name: "土瓜灣" }, { code: "SUW", name: "宋皇臺" }, { code: "KAT", name: "啟德" }, { code: "DIH", name: "鑽石山" }, { code: "HIK", name: "顯徑" }, { code: "TAW", name: "大圍" }, { code: "CKT", name: "車公廟" }, { code: "STW", name: "沙田圍" }, { code: "CIO", name: "第一城" }, { code: "SHM", name: "石門" }, { code: "TSH", name: "大水坑" }, { code: "HEO", name: "恒安" }, { code: "MOS", name: "馬鞍山" }, { code: "WKS", name: "烏溪沙" }] },
-      TCL: { name: "東涌綫", color: "bg-orange-500", stations: [{ code: "HOK", name: "香港" }, { code: "KOW", name: "九龍" }, { code: "OLY", name: "奧運" }, { code: "NAC", name: "南昌" }, { code: "LAK", name: "荔景" }, { code: "TSY", name: "青衣" }, { code: "SUN", name: "欣澳" }, { code: "TAW", name: "東涌" }] },
-      AEL: { name: "機場快綫", color: "bg-teal-600", stations: [{ code: "HOK", name: "香港" }, { code: "KOW", name: "九龍" }, { code: "TSY", name: "青衣" }, { code: "AIR", name: "機場" }, { code: "AWE", name: "博覽館" }] }
-    };
+        // HKO Weather Component
+        function WeatherSection() {
+            const [weather, setWeather] = useState(null);
+            const [forecast, setForecast] = useState([]);
+            const [warnings, setWarnings] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(false);
+            const [selectedDistrict, setSelectedDistrict] = useState('將軍澳');
+            const [districtSearch, setDistrictSearch] = useState('');
 
-    function WeatherSection() {
-      const [weather, setWeather] = useState(null);
-      const [forecast, setForecast] = useState([]);
-      const [warnings, setWarnings] = useState([]);
-      const [loading, setLoading] = useState(true);
-      const [error, setError] = useState(false);
-      const [selectedDistrict, setSelectedDistrict] = useState("將軍澳");
-      const [districtSearch, setDistrictSearch] = useState("");
-      const [lastRefreshed, setLastRefreshed] = useState("");
+            const fetchWeatherData = useCallback(async () => {
+                setLoading(true);
+                setError(false);
+                try {
+                    const timestamp = Date.now();
+                    const rhrRes = await fetch(`https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc&_=${timestamp}`);
+                    const rhrData = await rhrRes.json();
+                    
+                    const fndRes = await fetch(`https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=fnd&lang=tc&_=${timestamp}`);
+                    const fndData = await fndRes.json();
 
-      const fetchWeatherData = useCallback(async () => {
-        setLoading(true);
-        setError(false);
+                    const warnRes = await fetch(`https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warnsum&lang=tc&_=${timestamp}`);
+                    const warnData = await warnRes.json();
 
-        try {
-          const [rhrData, fndData, warnData] = await Promise.all([
-            fetchWithProxy("https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc"),
-            fetchWithProxy("https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=fnd&lang=tc"),
-            fetchWithProxy("https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warnsum&lang=tc")
-          ]);
+                    setWeather(rhrData);
+                    setForecast(fndData.weatherForecast || []);
+                    
+                    if (warnData && Object.keys(warnData).length > 0) {
+                        const warnList = Object.values(warnData).map(w => w.name).filter(Boolean);
+                        setWarnings(warnList);
+                    } else {
+                        setWarnings([]);
+                    }
+                } catch (err) {
+                    console.error("Error loading weather data:", err);
+                    setError(true);
+                } finally {
+                    setLoading(false);
+                }
+            }, []);
 
-          if (rhrData && typeof rhrData === 'object' && rhrData.temperature) {
-            setWeather(rhrData);
-          } else {
-            setError(true);
-          }
+            useEffect(() => {
+                fetchWeatherData();
+                const interval = setInterval(fetchWeatherData, 60000);
+                return () => clearInterval(interval);
+            }, [fetchWeatherData]);
 
-          if (fndData && fndData.weatherForecast) {
-            setForecast(fndData.weatherForecast);
-          }
-
-          const warnList = [];
-          if (warnData && typeof warnData === 'object') {
-            Object.values(warnData).forEach((w) => {
-              if (w && w.name) warnList.push(w.name);
-            });
-          }
-          if (rhrData && Array.isArray(rhrData.warningMessage)) {
-            rhrData.warningMessage.forEach((msg) => {
-              if (msg && typeof msg === 'string' && !warnList.includes(msg)) warnList.push(msg);
-            });
-          }
-          setWarnings(warnList);
-          setLastRefreshed(new Date().toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-        } catch (err) {
-          console.error("Weather error:", err);
-          setError(true);
-        } finally {
-          setLoading(false);
-        }
-      }, []);
-
-      useEffect(() => {
-        fetchWeatherData();
-        // Updated every 1 minute (60,000 ms) for real-time accurate weather data
-        const interval = setInterval(fetchWeatherData, 60000);
-        return () => clearInterval(interval);
-      }, [fetchWeatherData]);
-
-      const districtList = weather?.temperature?.data || [];
-      const activeDistrictData =
-        districtList.find((d) => d.place.includes(selectedDistrict)) ||
-        districtList.find((d) => d.place.includes("將軍澳")) ||
-        districtList.find((d) => d.place.includes("香港天文台")) ||
-        districtList[0];
-
-      const displayTemp = activeDistrictData?.value;
-      const displayPlace = activeDistrictData?.place || selectedDistrict || "全港平均";
-
-      const humidity = weather?.humidity?.data?.[0]?.value;
-      const uvObj = weather?.uvindex?.data?.[0];
-      const uvIndex = uvObj?.value;
-      const uvDesc = uvObj?.desc;
-
-      const weatherIconCode = weather?.icon?.[0];
-      const weatherIconUrl = weatherIconCode
-        ? `https://www.hko.gov.hk/images/wxicon/pic${weatherIconCode}.png`
-        : null;
-
-      const filteredDistricts = districtList.filter(
-        (place) =>
-          !districtSearch.trim() ||
-          place.place.toLowerCase().includes(districtSearch.trim().toLowerCase())
-      );
-
-      if (loading && !weather) {
-        return (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex justify-center items-center min-h-[160px]">
-            <div className="text-slate-400 flex items-center gap-2 text-sm font-medium">
-              <i className="fa-solid fa-spinner fa-spin text-lg text-sky-500"></i>
-              <span>正在連線至香港天文台數據庫載入最新天氣...</span>
-            </div>
-          </div>
-        );
-      }
-
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700 transition-all">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-sm">
-                <i className="fa-solid fa-cloud-sun mr-1.5"></i>香港天文台實時天氣
-              </span>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
-                每分鐘自動更新
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              {weather?.updateTime ? (
-                <span className="text-xs text-slate-400">
-                  天文台發布：{weather.updateTime.substring(11, 16)} (系統已於 {lastRefreshed} 同步)
-                </span>
-              ) : lastRefreshed ? (
-                <span className="text-xs text-slate-400">更新於：{lastRefreshed}</span>
-              ) : null}
-              <button
-                onClick={fetchWeatherData}
-                className="px-3 py-1.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-sky-600 hover:text-white transition flex items-center gap-1.5 font-medium"
-              >
-                <i className={`fa-solid fa-rotate ${loading ? "fa-spin" : ""}`}></i>
-                <span>立即更新</span>
-              </button>
-            </div>
-          </div>
-
-          {error && !weather ? (
-            <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-xl p-4 text-center text-rose-600 dark:text-rose-400 text-sm">
-              <i className="fa-solid fa-triangle-exclamation mr-2"></i>
-              天文台數據暫時未能連線，請點擊上方「立即更新」重試。
-            </div>
-          ) : (
-            <>
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-100 dark:border-slate-700">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-3xl shrink-0 p-1.5 shadow-inner">
-                    {weatherIconUrl ? (
-                      <img
-                        src={weatherIconUrl}
-                        alt="Weather Icon"
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'block';
-                        }}
-                      />
-                    ) : null}
-                    <i className="fa-solid fa-cloud-sun" style={{ display: weatherIconUrl ? 'none' : 'block' }}></i>
-                  </div>
-                  <div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-black text-slate-800 dark:text-slate-100 leading-none">
-                        {formatNumberDecimal(displayTemp)}°C
-                      </span>
-                      <span className="px-2.5 py-0.5 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold text-xs border border-sky-500/20">
-                        <i className="fa-solid fa-location-dot mr-1"></i>
-                        {displayPlace}
-                      </span>
+            if (loading && !weather) {
+                return (
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-700/80 animate-pulse flex justify-center items-center min-h-[160px]">
+                        <div className="text-slate-400 flex items-center gap-2">
+                            <i className="fa-solid fa-spinner fa-spin text-xl"></i>
+                            <span>正直接連線至香港天文台資料庫載入天氣報告...</span>
+                        </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-2">
-                      {humidity !== undefined && humidity !== null && (
-                        <span>
-                          <i className="fa-solid fa-droplet text-sky-500 mr-1"></i>
-                          相對濕度: <strong className="text-slate-700 dark:text-slate-200">{formatNumberDecimal(humidity)}%</strong>
-                        </span>
-                      )}
-                      {uvIndex !== undefined && uvIndex !== null && (
-                        <span>
-                          <i className="fa-solid fa-sun text-amber-500 mr-1"></i>
-                          UV指數: <strong className="text-slate-700 dark:text-slate-200">{formatNumberDecimal(uvIndex)} {uvDesc ? `(${uvDesc})` : ''}</strong>
-                        </span>
-                      )}
+                );
+            }
+
+            if (error && !weather) {
+                return (
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-rose-200 dark:border-rose-900/50 text-center">
+                        <p className="text-rose-500 font-semibold mb-2"><i className="fa-solid fa-triangle-exclamation mr-2"></i>無法直接連結香港天文台資料庫</p>
+                        <button onClick={fetchWeatherData} className="px-3 py-1 bg-rose-500 text-white rounded-lg text-sm hover:bg-rose-600 transition">重新嘗試連線</button>
                     </div>
-                  </div>
-                </div>
-
-                {warnings.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {warnings.map((warn, i) => (
-                      <span key={i} className="px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold text-xs border border-rose-500/20 flex items-center gap-1.5 animate-pulse">
-                        <i className="fa-solid fa-triangle-exclamation"></i>
-                        {warn}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                    <i className="fa-solid fa-shield-halved mr-1.5"></i>現時無特別天氣警告
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
-                  <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">全港各區最新氣溫（點擊切換地區）</h3>
-                  <input
-                    type="text"
-                    value={districtSearch}
-                    onChange={(e) => setDistrictSearch(e.target.value)}
-                    placeholder="搜尋地區..."
-                    className="px-2.5 py-1 text-xs bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500 dark:text-slate-100 w-full sm:w-44"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 text-xs max-h-52 overflow-y-auto p-1 scrollbar-thin">
-                  {filteredDistricts.map((place, idx) => {
-                    const isSelected = displayPlace === place.place;
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => setSelectedDistrict(place.place)}
-                        className={`p-2 rounded-xl flex justify-between items-center text-left border transition ${
-                          isSelected
-                            ? "bg-sky-600 text-white border-sky-600 shadow-sm font-bold ring-2 ring-sky-300 dark:ring-sky-700"
-                            : "bg-slate-50 dark:bg-slate-700/50 border-slate-100 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
-                        }`}
-                      >
-                        <span className="truncate mr-1">{place.place}</span>
-                        <span className={`shrink-0 ${isSelected ? "text-white font-black" : "font-bold text-slate-800 dark:text-slate-100"}`}>
-                          {formatNumberDecimal(place.value)}°C
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {forecast.length > 0 && (
-                <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700">
-                  <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">未來九天天氣預報</h3>
-                  <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin">
-                    {forecast.slice(0, 9).map((f, idx) => (
-                      <div key={idx} className="min-w-[105px] flex-1 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/30 text-center border border-slate-100 dark:border-slate-700/50 shrink-0">
-                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                          {f.forecastDate ? `${f.forecastDate.substring(4,6)}/${f.forecastDate.substring(6,8)}` : ''} ({f.week?.replace('星期', '週')})
-                        </div>
-                        <div className="text-sm font-bold text-slate-800 dark:text-slate-100 my-1">
-                          {formatNumberDecimal(f.forecastMintemp?.value)}° - {formatNumberDecimal(f.forecastMaxtemp?.value)}°C
-                        </div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1" title={f.forecastWeather}>
-                          {f.forecastWeather}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      );
-    }
-
-    function HospitalSection() {
-      const [hospitals, setHospitals] = useState([]);
-      const [loading, setLoading] = useState(true);
-      const [updateTime, setUpdateTime] = useState("");
-      const [search, setSearch] = useState("");
-      const [regionFilter, setRegionFilter] = useState("ALL");
-
-      const fetchHAData = useCallback(async () => {
-        setLoading(true);
-        try {
-          const res = await fetchWithProxy("https://www.ha.org.hk/aedwt/data/aedWtData2.json");
-          if (res && (res.hospData || res.waitTime)) {
-            const list = res.hospData || res.waitTime;
-            setHospitals(list);
-            setUpdateTime(res.updateTime || new Date().toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit' }));
-          } else {
-            setHospitals([
-  // Hong Kong Island
-  { hospNameName: "東區尤德夫人那打素醫院", topWait: "超過 4 小時" },
-  { hospNameName: "瑪麗醫院", topWait: "超過 3 小時" },
-  { hospNameName: "律敦治醫院", topWait: "超過 2 小時" },
-  { hospNameName: "長洲醫院", topWait: "第一時間" },
-
-  // Kowloon
-  { hospNameName: "伊利沙伯醫院", topWait: "超過 8 小時" },
-  { hospNameName: "廣華醫院", topWait: "超過 6 小時" },
-  { hospNameName: "基督教聯合醫院", topWait: "超過 7 小時" },
-  { hospNameName: "瑪嘉烈醫院", topWait: "超過 5 小時" },
-  { hospNameName: "明愛醫院", topWait: "超過 3 小時" },
-
-  // New Territories
-  { hospNameName: "威爾斯親王醫院", topWait: "超過 6 小時" },
-  { hospNameName: "屯門醫院", topWait: "超過 8 小時" },
-  { hospNameName: "北大嶼山醫院", topWait: "超過 1 小時" },
-  { hospNameName: "將軍澳醫院", topWait: "超過 4 小時" },
-  { hospNameName: "北區醫院", topWait: "超過 3 小時" },
-  { hospNameName: "博愛醫院", topWait: "超過 4 小時" },
-  { hospNameName: "天水圍醫院", topWait: "超過 5 小時" },
-  { hospNameName: "仁濟醫院", topWait: "超過 4 小時" },
-  { hospNameName: "雅麗氏何妙齡那打素醫院", topWait: "超過 3 小時" }
-]);
-            setUpdateTime(new Date().toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit' }));
-          }
-        } catch (e) {
-          console.error("HA Fetch failed", e);
-        } finally {
-          setLoading(false);
-        }
-      }, []);
-
-      useEffect(() => {
-        fetchHAData();
-        const interval = setInterval(fetchHAData, 60000);
-        return () => clearInterval(interval);
-      }, [fetchHAData]);
-
-      const filtered = hospitals.filter(h => {
-        const name = h.hospNameName || h.hospName || h.institutionName || "";
-        const matchesSearch = !search.trim() || name.includes(search.trim());
-        if (!matchesSearch) return false;
-        if (regionFilter === "ALL") return true;
-        if (regionFilter === "HK") return ["東區", "瑪麗", "律敦治", "長洲"].some(k => name.includes(k));
-        if (regionFilter === "KLN") return ["明愛", "廣華", "伊利沙伯", "聯合", "仁濟"].some(k => name.includes(k));
-        if (regionFilter === "NT") return ["那打素", "北區", "大嶼山", "博愛", "威爾斯", "瑪嘉烈", "天水圍", "將軍澳", "屯門"].some(k => name.includes(k));
-        return true;
-      });
-
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold text-sm">
-                <i className="fa-solid fa-hospital mr-1.5"></i>醫院管理局急症室等候時間
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              {updateTime && <span className="text-xs text-slate-400">更新於：{updateTime}</span>}
-              <button
-                onClick={fetchHAData}
-                className="px-3 py-1.5 text-xs rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-rose-600 hover:text-white transition flex items-center gap-1.5 font-medium"
-              >
-                <i className={`fa-solid fa-rotate ${loading ? "fa-spin" : ""}`}></i>
-                <span>更新數據</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2 mb-4">
-            <div className="flex bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl text-xs font-semibold shrink-0">
-              {[
-                { key: "ALL", label: "全港" },
-                { key: "HK", label: "港島區" },
-                { key: "KLN", label: "九龍區" },
-                { key: "NT", label: "新界區" },
-              ].map((reg) => (
-                <button
-                  key={reg.key}
-                  onClick={() => setRegionFilter(reg.key)}
-                  className={`px-3 py-1.5 rounded-lg transition ${regionFilter === reg.key ? "bg-rose-600 text-white shadow-sm" : "text-slate-600 dark:text-slate-300"}`}
-                >
-                  {reg.label}
-                </button>
-              ))}
-            </div>
-
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜尋醫院名稱 (例如: 伊利沙伯、屯門)..."
-              className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-rose-500 dark:text-slate-100"
-            />
-          </div>
-
-          {loading && hospitals.length === 0 ? (
-            <div className="py-8 text-center text-slate-400 text-sm">
-              <i className="fa-solid fa-spinner fa-spin mr-2"></i>正在載入急症室等候時間...
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {filtered.map((h, idx) => (
-                <div key={idx} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-700/60 flex justify-between items-center">
-                  <div>
-                    <div className="font-bold text-slate-800 dark:text-slate-100 text-sm">{h.hospNameName || h.hospName || h.institutionName}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">最長等候時間</div>
-                  </div>
-                  <div className="px-3 py-1 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 font-extrabold text-xs border border-rose-500/20">
-                    {h.topWait || "未知"}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    function BusSection({ onAddFavorite }) {
-      const [company, setCompany] = useState("KMB");
-      const [route, setRoute] = useState("1A");
-      const [loading, setLoading] = useState(false);
-      const [stops, setStops] = useState([]);
-      const [selectedStop, setSelectedStop] = useState(null);
-      const [etaList, setEtaList] = useState([]);
-
-      const searchRoute = useCallback(async () => {
-        if (!route.trim()) return;
-        setLoading(true);
-        setStops([]);
-        setSelectedStop(null);
-        setEtaList([]);
-
-        try {
-          if (company === "KMB") {
-            const res = await fetchWithProxy(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${route.trim().toUpperCase()}/outbound/1`);
-            if (res && res.data) {
-              const stopDetails = await Promise.all(
-                res.data.slice(0, 15).map(async (item) => {
-                  const s = await fetchWithProxy(`https://data.etabus.gov.hk/v1/transport/kmb/stop/${item.stop}`);
-                  return {
-                    stopId: item.stop,
-                    seq: item.seq,
-                    name: s?.data?.name_tc || item.stop
-                  };
-                })
-              );
-              setStops(stopDetails);
+                );
             }
-          } else {
-            const res = await fetchWithProxy(`https://data.etabus.gov.hk/v1/transport/citybus-nwfb/route-stop/ctb/${route.trim().toUpperCase()}/outbound`);
-            if (res && res.data) {
-              setStops(res.data.slice(0, 15).map(s => ({ stopId: s.stop, seq: s.seq, name: `巴士站 #${s.stop}` })));
-            }
-          }
-        } catch (e) {
-          console.error("Bus route error", e);
-        } finally {
-          setLoading(false);
+
+            const districtList = weather?.temperature?.data || [];
+            const activeDistrictData = districtList.find(d => d.place.includes(selectedDistrict)) 
+                || districtList.find(d => d.place.includes('將軍澳')) 
+                || districtList[0];
+            const displayTemp = activeDistrictData?.value;
+            const displayPlace = activeDistrictData?.place || '將軍澳';
+
+            const humidity = weather?.humidity?.data?.[0]?.value;
+            const uvIndex = weather?.uvindex?.data?.[0]?.value;
+
+            const filteredDistricts = districtList.filter(place => 
+                !districtSearch.trim() || place.place.toLowerCase().includes(districtSearch.trim().toLowerCase())
+            );
+
+            return (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80 transition-all">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-100 dark:border-slate-700">
+                        <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-[30px] shrink-0">
+                                <i className="fa-solid fa-sun-plant-wilt"></i>
+                            </div>
+                            <div>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-[30px] font-extrabold text-slate-800 dark:text-slate-100 leading-none">{formatNumberDecimal(displayTemp)}°C</span>
+                                    <span className="px-2.5 py-0.5 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold text-xs border border-sky-500/20">
+                                        <i className="fa-solid fa-location-dot mr-1"></i>{displayPlace}
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    <span><i className="fa-solid fa-droplet text-sky-500 mr-1"></i>相對濕度: <strong className="text-slate-700 dark:text-slate-200">{formatNumberDecimal(humidity)}%</strong></span>
+                                    {uvIndex !== undefined && uvIndex !== null && (
+                                        <span><i className="fa-solid fa-sun text-amber-500 mr-1"></i>紫外線指數: <strong className="text-slate-700 dark:text-slate-200">{formatNumberDecimal(uvIndex)}</strong></span>
+                                    )}
+                                    <span className="text-slate-400">天文台直連報告時間: {weather?.updateTime ? weather.updateTime.substring(11, 16) : '--:--'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {warnings.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                                {warnings.map((warn, i) => (
+                                    <span key={i} className="px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold text-xs border border-rose-500/20 flex items-center gap-1.5 animate-pulse">
+                                        <i className="fa-solid fa-triangle-exclamation"></i>
+                                        {warn}
+                                    </span>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                                <i className="fa-solid fa-shield-halved mr-1.5"></i>現時無特別天氣警告
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="mt-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
+                            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                全港各區最新氣溫（完整列表 • 點擊切換顯示地區）
+                            </h3>
+                            <div className="relative w-full sm:w-48">
+                                <input
+                                    type="text"
+                                    value={districtSearch}
+                                    onChange={(e) => setDistrictSearch(e.target.value)}
+                                    placeholder="搜尋地區 (如: 將軍澳)..."
+                                    className="w-full px-2.5 py-1 text-xs bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500 dark:text-slate-100"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 text-xs max-h-64 overflow-y-auto p-1 scrollbar-thin">
+                            {filteredDistricts.map((place, idx) => {
+                                const isSelected = displayPlace === place.place;
+                                return (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setSelectedDistrict(place.place)}
+                                        className={`p-2 rounded-xl flex justify-between items-center text-left border transition ${
+                                            isSelected
+                                                ? 'bg-sky-600 text-white border-sky-600 shadow-sm font-bold ring-2 ring-sky-300 dark:ring-sky-700'
+                                                : 'bg-slate-50 dark:bg-slate-700/50 border-slate-100 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+                                        }`}
+                                    >
+                                        <span className="truncate mr-1">{place.place}</span>
+                                        <span className={`shrink-0 ${isSelected ? 'text-white font-black' : 'font-bold text-slate-800 dark:text-slate-100'}`}>
+                                            {formatNumberDecimal(place.value)}°C
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700">
+                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">九天天氣預報</h3>
+                        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                            {forecast.slice(0, 7).map((f, idx) => (
+                                <div key={idx} className="min-w-[100px] flex-1 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/30 text-center border border-slate-100 dark:border-slate-700/50 shrink-0">
+                                    <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                                        {f.forecastDate ? `${f.forecastDate.substring(4, 6)}/${f.forecastDate.substring(6, 8)}` : ''} ({f.week?.replace('星期', '週')})
+                                    </div>
+                                    <div className="text-sm font-bold text-slate-800 dark:text-slate-100 my-1">
+                                        {formatNumberDecimal(f.forecastMintemp?.value)}° - {formatNumberDecimal(f.forecastMaxtemp?.value)}°C
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1" title={f.forecastWeather}>
+                                        {f.forecastWeather}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
         }
-      }, [company, route]);
 
-      const fetchETA = async (stop) => {
-        setSelectedStop(stop);
-        setEtaList([]);
-        try {
-          const url = company === "KMB"
-            ? `https://data.etabus.gov.hk/v1/transport/kmb/eta/${stop.stopId}/${route.trim().toUpperCase()}/1`
-            : `https://data.etabus.gov.hk/v1/transport/citybus-nwfb/eta/ctb/${stop.stopId}/${route.trim().toUpperCase()}`;
+        // Hospital Authority A&E Waiting Time Component (Exact Table match to official HA reference)
+        function AeeSection({ toggleFavorite, isFavorite }) {
+            const [hospitals, setHospitals] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(false);
+            const [searchQuery, setSearchQuery] = useState('');
+            const [selectedRegion, setSelectedRegion] = useState('ALL');
+            const [lastUpdated, setLastUpdated] = useState('');
 
-          const res = await fetchWithProxy(url);
-          if (res && res.data) {
-            setEtaList(res.data.slice(0, 3));
-          }
-        } catch (e) {
-          console.error("Bus ETA error", e);
+            const fetchAeeData = useCallback(async () => {
+                setLoading(true);
+                setError(false);
+                try {
+                    const timestamp = Date.now();
+                    const targetUrl = encodeURIComponent(`https://www.ha.org.hk/aedwt/data/aedWtData2.json?_=${timestamp}`);
+                    const proxyUrl = `https://api.allorigins.win/raw?url=${targetUrl}`;
+                    
+                    const res = await fetch(proxyUrl);
+                    const data = await res.json();
+                    
+                    let items = [];
+                    if (data && data.result) {
+                        items = data.result;
+                    } else if (Array.isArray(data)) {
+                        items = data;
+                    } else if (data && data.hospitals) {
+                        items = data.hospitals;
+                    }
+                    setHospitals(items);
+                    const now = new Date();
+                    setLastUpdated(now.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: true }));
+                } catch (err) {
+                    console.error("Error loading HA A&E waiting time:", err);
+                    setError(true);
+                } finally {
+                    setLoading(false);
+                }
+            }, []);
+
+            useEffect(() => {
+                fetchAeeData();
+                const interval = setInterval(fetchAeeData, 60000);
+                return () => clearInterval(interval);
+            }, [fetchAeeData]);
+
+            // Categorize hospitals by region for grouping
+            const getRegionByCluster = (cluster, hospName) => {
+                if (hospName && (hospName.includes('東區') || hospName.includes('瑪麗') || hospName.includes('律敦治') || hospName.includes('長洲'))) return 'HK';
+                if (cluster === 'HKIE' || cluster === 'HKW') return 'HK';
+                if (cluster === 'KC' || cluster === 'KE' || cluster === 'KW') return 'KLN';
+                if (cluster === 'NTE' || cluster === 'NTW') return 'NT';
+                return 'NT';
+            };
+
+            const regions = [
+                { key: 'ALL', label: '全港' },
+                { key: 'HK', label: '港島區' },
+                { key: 'KLN', label: '九龍區' },
+                { key: 'NT', label: '新界區' }
+            ];
+
+            const filteredHospitals = useMemo(() => {
+                return hospitals.filter(h => {
+                    const nameMatch = !searchQuery.trim() || h.hospName?.toLowerCase().includes(searchQuery.trim().toLowerCase());
+                    const region = getRegionByCluster(h.cluster, h.hospName);
+                    const regionMatch = selectedRegion === 'ALL' || region === selectedRegion;
+                    return nameMatch && regionMatch;
+                });
+            }, [hospitals, searchQuery, selectedRegion]);
+
+            // Group filtered hospitals by region
+            const groupedHospitals = useMemo(() => {
+                const groups = { HK: { name: '港島區', items: [] }, KLN: { name: '九龍區', items: [] }, NT: { name: '新界區', items: [] } };
+                filteredHospitals.forEach(h => {
+                    const reg = getRegionByCluster(h.cluster, h.hospName);
+                    if (groups[reg]) {
+                        groups[reg].items.push(h);
+                    }
+                });
+                return groups;
+            }, [filteredHospitals]);
+
+            return (
+                <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-700/80 space-y-5">
+                    {/* Top Header */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-2 border-b border-slate-100 dark:border-slate-700">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-2xl font-bold text-sm border border-rose-100 dark:border-rose-900/50">
+                            <i className="fa-solid fa-hospital"></i>
+                            <span>醫院管理局急症室等候時間</span>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-slate-400">
+                            <span>更新於：{lastUpdated || '--:--'}</span>
+                            <button
+                                onClick={fetchAeeData}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 transition border border-slate-200 dark:border-slate-600 font-medium"
+                            >
+                                <i className={`fa-solid fa-rotate ${loading ? 'fa-spin' : ''}`}></i>
+                                <span>更新數據</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Filter and Search Bar */}
+                    <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+                        <div className="flex flex-wrap gap-1.5 bg-slate-100/80 dark:bg-slate-900 p-1.5 rounded-2xl text-xs font-semibold">
+                            {regions.map(r => (
+                                <button
+                                    key={r.key}
+                                    onClick={() => setSelectedRegion(r.key)}
+                                    className={`px-5 py-2.5 rounded-xl transition ${selectedRegion === r.key ? 'bg-rose-600 text-white shadow-sm font-bold' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'}`}
+                                >
+                                    {r.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="relative flex-1 max-w-xl">
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="搜尋醫院名稱 (例如: 伊利沙伯、屯門)..."
+                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 dark:text-slate-100"
+                            />
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="p-4 bg-rose-50 text-rose-600 rounded-2xl text-xs border border-rose-200">
+                            暫時無法連接醫管局急症室數據庫，請稍後重試。
+                        </div>
+                    )}
+
+                    {loading && hospitals.length === 0 ? (
+                        <div className="p-16 text-center text-slate-400 text-sm">
+                            <i className="fa-solid fa-spinner fa-spin mr-2 text-xl"></i>載入各公立醫院急症室輪候時間中...
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-semibold">
+                                        <th className="p-3.5 rounded-l-xl">醫院</th>
+                                        <th className="p-3.5 text-center">分流類別 I</th>
+                                        <th className="p-3.5 text-center">分流類別 II</th>
+                                        <th className="p-3.5 text-center">分流類別 III</th>
+                                        <th className="p-3.5 text-center rounded-r-xl">分流類別 IV & V</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                    {Object.keys(groupedHospitals).map(regKey => {
+                                        const group = groupedHospitals[regKey];
+                                        if (group.items.length === 0) return null;
+                                        return (
+                                            <React.Fragment key={regKey}>
+                                                <tr className="bg-slate-100/60 dark:bg-slate-900/80">
+                                                    <td colSpan="5" className="px-3.5 py-2.5 font-bold text-rose-600 dark:text-rose-400 text-xs tracking-wider">
+                                                        {group.name}
+                                                    </td>
+                                                </tr>
+                                                {group.items.map((h, idx) => (
+                                                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
+                                                        <td className="p-3.5 font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
+                                                            <span>{h.hospName}</span>
+                                                            <button
+                                                                onClick={() => toggleFavorite({
+                                                                    id: `AEE-${h.hospCode || h.hospName}`,
+                                                                    type: 'AEE',
+                                                                    hospName: h.hospName,
+                                                                    cluster: h.cluster,
+                                                                    waittime: h.waitingTime
+                                                                })}
+                                                                className="text-amber-500 hover:scale-110 transition ml-2"
+                                                                title="加入最愛"
+                                                            >
+                                                                <i className={`${isFavorite(`AEE-${h.hospCode || h.hospName}`) ? 'fa-solid' : 'fa-regular'} fa-star text-sm`}></i>
+                                                            </button>
+                                                        </td>
+                                                        <td className="p-3.5 text-center text-slate-600 dark:text-slate-300">
+                                                            {h.triage1 || '0 分鐘'}
+                                                        </td>
+                                                        <td className="p-3.5 text-center text-slate-600 dark:text-slate-300">
+                                                            {h.triage2 || '少於 15 分鐘'}
+                                                        </td>
+                                                        <td className="p-3.5 text-center text-slate-600 dark:text-slate-300">
+                                                            <div>{h.triage3 || h.waitingTime || '--'}</div>
+                                                            {h.triage3Max && <div className="text-[10px] text-slate-400">({h.triage3Max})</div>}
+                                                        </td>
+                                                        <td className="p-3.5 text-center font-bold text-rose-600 dark:text-rose-400">
+                                                            <div>{h.waitingTime || h.triage45 || '--'}</div>
+                                                            {h.waitingTimeMax && <div className="text-[10px] text-slate-400 font-normal">({h.waitingTimeMax})</div>}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            );
         }
-      };
 
-      useEffect(() => {
-        searchRoute();
-      }, []);
+        // KMB & Citybus ETA Section
+        function BusSection({ toggleFavorite, isFavorite }) {
+            const [company, setCompany] = useState('KMB');
+            const [searchRoute, setSearchRoute] = useState('');
+            const [selectedRoute, setSelectedRoute] = useState(null);
+            const [bound, setBound] = useState('outbound');
+            const [stops, setStops] = useState([]);
+            const [selectedStop, setSelectedStop] = useState(null);
+            const [etaList, setEtaList] = useState([]);
+            const [loadingStops, setLoadingStops] = useState(false);
+            const [loadingEta, setLoadingEta] = useState(false);
+            const [errorMsg, setErrorMsg] = useState('');
 
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="p-2 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 font-bold text-sm">
-              <i className="fa-solid fa-bus mr-1.5"></i>專營巴士實時到站 (九巴 / 城巴)
-            </span>
-          </div>
+            const handleSearchRoute = async (e) => {
+                e.preventDefault();
+                if (!searchRoute.trim()) return;
+                setLoadingStops(true);
+                setErrorMsg('');
+                setSelectedRoute(null);
+                setSelectedStop(null);
+                setEtaList([]);
+                setStops([]);
 
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button
-              onClick={() => setCompany("KMB")}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition ${company === 'KMB' ? 'bg-red-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
-            >
-              九巴 (KMB)
-            </button>
-            <button
-              onClick={() => setCompany("CTB")}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition ${company === 'CTB' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
-            >
-              城巴 (Citybus)
-            </button>
-          </div>
+                const formattedRoute = searchRoute.trim().toUpperCase();
 
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              value={route}
-              onChange={(e) => setRoute(e.target.value)}
-              placeholder="輸入路線 (如 1A, 290A, 102)..."
-              className="flex-1 px-3 py-2 text-xs bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-slate-100"
-            />
-            <button
-              onClick={searchRoute}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-sm transition"
-            >
-              {loading ? <i className="fa-solid fa-spinner fa-spin"></i> : "搜尋車站"}
-            </button>
-          </div>
+                try {
+                    if (company === 'KMB') {
+                        const res = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route/${formattedRoute}/outbound/1`);
+                        const data = await res.json();
+                        if (data.data) {
+                            setSelectedRoute(data.data);
+                            loadStops('KMB', formattedRoute, 'outbound');
+                        } else {
+                            setErrorMsg('找不到該九巴路線');
+                        }
+                    } else {
+                        const res = await fetch(`https://rt.data.gov.hk/v1/transport/citybus-nwfb/route/ctb/${formattedRoute}`);
+                        const data = await res.json();
+                        if (data.data) {
+                            setSelectedRoute(data.data);
+                            loadStops('CTB', formattedRoute, 'outbound');
+                        } else {
+                            setErrorMsg('找不到該城巴路線');
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error searching bus route:", err);
+                    setErrorMsg('搜尋路線時發生錯誤');
+                } finally {
+                    setLoadingStops(false);
+                }
+            };
 
-          {stops.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">沿途車站</h4>
-                <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1 scrollbar-thin">
-                  {stops.map((s, idx) => (
+            const loadStops = async (comp, route, direction) => {
+                setLoadingStops(true);
+                setErrorMsg('');
+                try {
+                    if (comp === 'KMB') {
+                        const boundParam = direction === 'outbound' ? 'outbound' : 'inbound';
+                        const res = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${route}/${boundParam}/1`);
+                        const data = await res.json();
+                        if (data.data && data.data.length > 0) {
+                            const stopPromises = data.data.map(item =>
+                                fetch(`https://data.etabus.gov.hk/v1/transport/kmb/stop/${item.stop}`)
+                                    .then(r => r.json())
+                                    .then(d => ({ stopId: item.stop, name: d.data?.name_tc || item.stop, seq: item.seq }))
+                                    .catch(() => ({ stopId: item.stop, name: item.stop, seq: item.seq }))
+                            );
+                            const stopDetails = await Promise.all(stopPromises);
+                            setStops(stopDetails.sort((a, b) => a.seq - b.seq));
+                        } else {
+                            setStops([]);
+                            setErrorMsg('暫無該方向車站數據');
+                        }
+                    } else {
+                        const ctbDir = direction === 'outbound' ? 'outbound' : 'inbound';
+                        const res = await fetch(`https://rt.data.gov.hk/v1/transport/citybus-nwfb/route-stop/ctb/${route}/${ctbDir}`);
+                        const data = await res.json();
+                        if (data.data && data.data.length > 0) {
+                            const stopPromises = data.data.map(item =>
+                                fetch(`https://rt.data.gov.hk/v1/transport/citybus-nwfb/stop/${item.stop}`)
+                                    .then(r => r.json())
+                                    .then(d => ({ stopId: item.stop, name: d.data?.name_tc || item.stop, seq: item.seq }))
+                                    .catch(() => ({ stopId: item.stop, name: item.stop, seq: item.seq }))
+                            );
+                            const stopDetails = await Promise.all(stopPromises);
+                            setStops(stopDetails.sort((a, b) => a.seq - b.seq));
+                        } else {
+                            setStops([]);
+                            setErrorMsg('暫無該方向車站數據');
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error loading bus stops:", err);
+                    setErrorMsg('載入巴士站時發生錯誤');
+                } finally {
+                    setLoadingStops(false);
+                }
+            };
+
+            const handleDirectionChange = (newBound) => {
+                setBound(newBound);
+                if (selectedRoute) {
+                    loadStops(company, selectedRoute.route, newBound);
+                }
+            };
+
+            const fetchETA = useCallback(async (stop) => {
+                if (!stop || !selectedRoute) return;
+                setSelectedStop(stop);
+                setLoadingEta(true);
+                try {
+                    let url = company === 'KMB'
+                        ? `https://data.etabus.gov.hk/v1/transport/kmb/eta/${stop.stopId}/${selectedRoute.route}/1`
+                        : `https://rt.data.gov.hk/v1/transport/citybus-nwfb/eta/ctb/${stop.stopId}/${selectedRoute.route}`;
+                    
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    
+                    if (data.data) {
+                        const validEtas = data.data.filter(item => item.eta);
+                        setEtaList(validEtas);
+                    } else {
+                        setEtaList([]);
+                    }
+                } catch (err) {
+                    console.error("Error fetching ETA:", err);
+                    setEtaList([]);
+                } finally {
+                    setLoadingEta(false);
+                }
+            }, [company, selectedRoute]);
+
+            useEffect(() => {
+                if (!selectedStop) return;
+                const interval = setInterval(() => {
+                    fetchETA(selectedStop);
+                }, 60000);
+                return () => clearInterval(interval);
+            }, [selectedStop, fetchETA]);
+
+            return (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                            <span className="p-2 rounded-xl bg-red-500/10 text-red-600 font-bold text-sm">
+                                <i className="fa-solid fa-bus mr-1"></i>專營巴士
+                            </span>
+                            <span className="text-xs text-slate-400">九巴 & 城巴實時到站</span>
+                        </div>
+
+                        <div className="flex bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl text-xs font-semibold">
+                            <button
+                                onClick={() => { setCompany('KMB'); setSelectedRoute(null); setStops([]); setSelectedStop(null); setEtaList([]); }}
+                                className={`px-3 py-1.5 rounded-lg transition ${company === 'KMB' ? 'bg-red-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}
+                            >
+                                九巴 KMB
+                            </button>
+                            <button
+                                onClick={() => { setCompany('CTB'); setSelectedRoute(null); setStops([]); setSelectedStop(null); setEtaList([]); }}
+                                className={`px-3 py-1.5 rounded-lg transition ${company === 'CTB' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}
+                            >
+                                城巴 CTB
+                            </button>
+                        </div>
+                    </div>
+
+                    <form onSubmit={handleSearchRoute} className="flex gap-2 mb-4">
+                        <div className="relative flex-1">
+                            <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input
+                                type="text"
+                                value={searchRoute}
+                                onChange={(e) => setSearchRoute(e.target.value)}
+                                placeholder={`輸入${company === 'KMB' ? '九巴' : '城巴'}路線號碼 (例如: 1A, 102, B1)...`}
+                                className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 dark:text-slate-100"
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-xl text-sm transition shrink-0 flex items-center gap-1.5"
+                        >
+                            <i className="fa-solid fa-search"></i>
+                            <span>搜尋</span>
+                        </button>
+                    </form>
+
+                    {errorMsg && (
+                        <div className="p-3 bg-rose-50 text-rose-600 rounded-xl text-xs mb-4 border border-rose-200">
+                            {errorMsg}
+                        </div>
+                    )}
+
+                    {selectedRoute && (
+                        <div className="space-y-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-100 dark:border-slate-700">
+                                <div>
+                                    <span className="text-lg font-black text-slate-800 dark:text-slate-100 mr-2">{selectedRoute.route}</span>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                                        {selectedRoute.orig_tc || selectedRoute.orig_en} ➔ {selectedRoute.dest_tc || selectedRoute.dest_en}
+                                    </span>
+                                </div>
+                                <div className="flex bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-600 text-xs font-semibold">
+                                    <button
+                                        onClick={() => handleDirectionChange('outbound')}
+                                        className={`px-3 py-1 rounded-md transition ${bound === 'outbound' ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900' : 'text-slate-500'}`}
+                                    >
+                                        往 {selectedRoute.dest_tc || '目的地'}
+                                    </button>
+                                    <button
+                                        onClick={() => handleDirectionChange('inbound')}
+                                        className={`px-3 py-1 rounded-md transition ${bound === 'inbound' ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900' : 'text-slate-500'}`}
+                                    >
+                                        往 {selectedRoute.orig_tc || '起點'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase">巴士站列表 ({stops.length})</h4>
+                                    {loadingStops ? (
+                                        <div className="p-8 text-center text-slate-400 text-xs">
+                                            <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入車站清單中...
+                                        </div>
+                                    ) : (
+                                        <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+                                            {stops.map((stop) => (
+                                                <button
+                                                    key={stop.stopId}
+                                                    onClick={() => fetchETA(stop)}
+                                                    className={`w-full p-2.5 rounded-xl text-left text-xs transition flex justify-between items-center border ${selectedStop?.stopId === stop.stopId ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-500 text-sky-700 dark:text-sky-300 font-semibold' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-100 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                                >
+                                                    <span className="truncate pr-2">{stop.seq}. {stop.name}</span>
+                                                    <i className="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">即時班次到站時間</h4>
+                                    {selectedStop ? (
+                                        <div className="p-4 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-200/80 dark:border-slate-700 space-y-3">
+                                            <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-600 pb-2">
+                                                <span className="font-bold text-sm text-slate-800 dark:text-slate-100">{selectedStop.name}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => toggleFavorite({
+                                                            id: `BUS-${company}-${selectedRoute.route}-${selectedStop.stopId}`,
+                                                            type: 'BUS',
+                                                            company,
+                                                            route: selectedRoute.route,
+                                                            stopId: selectedStop.stopId,
+                                                            stopName: selectedStop.name,
+                                                            dest: selectedRoute.dest_tc || ''
+                                                        })}
+                                                        className="p-1.5 text-amber-500 hover:scale-110 transition"
+                                                        title="加入最愛"
+                                                    >
+                                                        <i className={`${isFavorite(`BUS-${company}-${selectedRoute.route}-${selectedStop.stopId}`) ? 'fa-solid' : 'fa-regular'} fa-star text-lg`}></i>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => fetchETA(selectedStop)}
+                                                        className="p-1.5 text-slate-500 hover:text-sky-500 transition"
+                                                        title="手動更新"
+                                                    >
+                                                        <i className={`fa-solid fa-rotate ${loadingEta ? 'fa-spin' : ''}`}></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {loadingEta ? (
+                                                <div className="p-6 text-center text-slate-400 text-xs">
+                                                    <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入實時班次中...
+                                                </div>
+                                            ) : etaList.length > 0 ? (
+                                                <div className="space-y-2">
+                                                    {etaList.map((eta, i) => {
+                                                        const remMins = calculateRemainingMinutes(eta.eta);
+                                                        return (
+                                                            <div key={i} className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs">
+                                                                <div>
+                                                                    <div className="font-semibold text-slate-700 dark:text-slate-200">
+                                                                        往 {eta.dest_tc || selectedRoute.dest_tc || '目的地'}
+                                                                    </div>
+                                                                    <div className="text-[11px] text-slate-400">
+                                                                        {eta.rmk_tc || eta.rmk_en || '預計抵達'} • {eta.eta ? eta.eta.substring(11, 16) : ''}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    {remMins === null ? (
+                                                                        <span className="text-slate-400">無時間數據</span>
+                                                                    ) : remMins <= 0 ? (
+                                                                        <span className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold rounded-md animate-pulse">即將到站</span>
+                                                                    ) : (
+                                                                        <span className="text-base font-extrabold text-sky-600 dark:text-sky-400">{remMins} <span className="text-xs font-normal">分鐘</span></span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <div className="p-6 text-center text-slate-400 text-xs">
+                                                    未有即時班次數據或服務已結束
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="p-8 text-center text-slate-400 text-xs bg-slate-50 dark:bg-slate-700/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                                            請在左側選擇車站以檢視即時到站時間
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // MTR Real-time Schedule Section
+        function MtrSection({ toggleFavorite, isFavorite }) {
+            const [selectedLine, setSelectedLine] = useState('KTL');
+            const [selectedStation, setSelectedStation] = useState(MTR_DATA['KTL'].stations[0]);
+            const [schedule, setSchedule] = useState({ UP: [], DOWN: [] });
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(false);
+
+            const lineInfo = MTR_DATA[selectedLine];
+
+            const fetchMtrSchedule = useCallback(async () => {
+                if (!selectedLine || !selectedStation) return;
+                setLoading(true);
+                setError(false);
+                try {
+                    const res = await fetch(`https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=${selectedLine}&sta=${selectedStation.code}&lang=TC`);
+                    const data = await res.json();
+                    
+                    const key = `${selectedLine}-${selectedStation.code}`;
+                    if (data && data.status === 1 && data.data && data.data[key]) {
+                        const stationData = data.data[key];
+                        setSchedule({
+                            UP: Array.isArray(stationData.UP) ? stationData.UP : [],
+                            DOWN: Array.isArray(stationData.DOWN) ? stationData.DOWN : []
+                        });
+                    } else {
+                        setSchedule({ UP: [], DOWN: [] });
+                    }
+                } catch (err) {
+                    console.error("Error fetching MTR schedule:", err);
+                    setError(true);
+                    setSchedule({ UP: [], DOWN: [] });
+                } finally {
+                    setLoading(false);
+                }
+            }, [selectedLine, selectedStation]);
+
+            useEffect(() => {
+                fetchMtrSchedule();
+                const interval = setInterval(fetchMtrSchedule, 60000);
+                return () => clearInterval(interval);
+            }, [fetchMtrSchedule]);
+
+            const handleSelectLine = (lineKey) => {
+                setSelectedLine(lineKey);
+                setSelectedStation(MTR_DATA[lineKey].stations[0]);
+            };
+
+            return (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                            <span className="p-2 rounded-xl bg-red-800/10 text-red-800 dark:text-red-400 font-bold text-sm">
+                                <i className="fa-solid fa-train-subway mr-1"></i>港鐵 MTR
+                            </span>
+                            <span className="text-xs text-slate-400">重鐵路綫實時列車班次</span>
+                        </div>
+                        <button
+                            onClick={fetchMtrSchedule}
+                            className="p-1.5 text-xs text-slate-500 hover:text-sky-500 transition flex items-center gap-1"
+                        >
+                            <i className={`fa-solid fa-rotate ${loading ? 'fa-spin' : ''}`}></i>
+                            <span>更新</span>
+                        </button>
+                    </div>
+
+                    <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-thin">
+                        {Object.keys(MTR_DATA).map((lineKey) => {
+                            const l = MTR_DATA[lineKey];
+                            return (
+                                <button
+                                    key={lineKey}
+                                    onClick={() => handleSelectLine(lineKey)}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-2 border ${selectedLine === lineKey ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent' : 'bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600'}`}
+                                >
+                                    <span className={`w-2.5 h-2.5 rounded-full ${l.color}`}></span>
+                                    <span>{l.name}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div className="mb-4">
+                        <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">選擇車站</h4>
+                        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1 scrollbar-thin">
+                            {lineInfo.stations.map((sta) => (
+                                <button
+                                    key={sta.code}
+                                    onClick={() => setSelectedStation(sta)}
+                                    className={`px-3 py-1 rounded-lg text-xs font-medium transition border ${selectedStation.code === sta.code ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-50 dark:bg-slate-700/30 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'}`}
+                                >
+                                    {sta.name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl border border-slate-200/80 dark:border-slate-700">
+                        <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-600 mb-3">
+                            <div className="flex items-center gap-2.5">
+                                <span className={`w-3 h-3 rounded-full ${lineInfo.color}`}></span>
+                                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                                    {lineInfo.name} • {selectedStation.name}站
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => toggleFavorite({
+                                    id: `MTR-${selectedLine}-${selectedStation.code}`,
+                                    type: 'MTR',
+                                    line: selectedLine,
+                                    lineName: lineInfo.name,
+                                    stationCode: selectedStation.code,
+                                    stationName: selectedStation.name
+                                })}
+                                className="p-1.5 text-amber-500 hover:scale-110 transition"
+                                title="加入最愛"
+                            >
+                                <i className={`${isFavorite(`MTR-${selectedLine}-${selectedStation.code}`) ? 'fa-solid' : 'fa-regular'} fa-star text-lg`}></i>
+                            </button>
+                        </div>
+
+                        {loading ? (
+                            <div className="p-8 text-center text-slate-400 text-xs">
+                                <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入港鐵實時班次中...
+                            </div>
+                        ) : error ? (
+                            <div className="p-6 text-center text-rose-500 text-xs">
+                                暫時未能取得港鐵班次數據
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <h5 className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                        <i className="fa-solid fa-arrow-up text-sky-500"></i> 上行方向班次
+                                    </h5>
+                                    {schedule.UP.length > 0 ? (
+                                        schedule.UP.map((train, i) => {
+                                            const remMins = calculateRemainingMinutes(train.time);
+                                            const destName = MTR_STATION_NAMES[train.dest] || train.dest;
+                                            return (
+                                                <div key={i} className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs">
+                                                    <div>
+                                                        <span className="font-bold text-slate-700 dark:text-slate-200">往 {destName}</span>
+                                                        <span className="ml-2 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 rounded text-[10px]">月台 {train.plat}</span>
+                                                    </div>
+                                                    <div>
+                                                        {remMins === null ? (
+                                                            <span className="text-slate-400">--</span>
+                                                        ) : remMins <= 0 ? (
+                                                            <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 font-bold rounded animate-pulse">即將到達</span>
+                                                        ) : (
+                                                            <span className="font-extrabold text-sky-600 dark:text-sky-400">{remMins} 分鐘</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="p-4 text-center text-slate-400 text-xs bg-white dark:bg-slate-800 rounded-xl">暫無班次數據</div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h5 className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                        <i className="fa-solid fa-arrow-down text-indigo-500"></i> 下行方向班次
+                                    </h5>
+                                    {schedule.DOWN.length > 0 ? (
+                                        schedule.DOWN.map((train, i) => {
+                                            const remMins = calculateRemainingMinutes(train.time);
+                                            const destName = MTR_STATION_NAMES[train.dest] || train.dest;
+                                            return (
+                                                <div key={i} className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs">
+                                                    <div>
+                                                        <span className="font-bold text-slate-700 dark:text-slate-200">往 {destName}</span>
+                                                        <span className="ml-2 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 rounded text-[10px]">月台 {train.plat}</span>
+                                                    </div>
+                                                    <div>
+                                                        {remMins === null ? (
+                                                            <span className="text-slate-400">--</span>
+                                                        ) : remMins <= 0 ? (
+                                                            <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 font-bold rounded animate-pulse">即將到達</span>
+                                                        ) : (
+                                                            <span className="font-extrabold text-sky-600 dark:text-sky-400">{remMins} 分鐘</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="p-4 text-center text-slate-400 text-xs bg-white dark:bg-slate-800 rounded-xl">暫無班次數據</div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Green Minibus Section
+        function GmbSection({ toggleFavorite, isFavorite }) {
+            const [region, setRegion] = useState('HKI');
+            const [searchCode, setSearchCode] = useState('');
+            const [routesList, setRoutesList] = useState([]);
+            const [selectedRoute, setSelectedRoute] = useState(null);
+            const [routeStops, setRouteStops] = useState([]);
+            const [selectedStop, setSelectedStop] = useState(null);
+            const [etaData, setEtaData] = useState([]);
+            const [loadingRoutes, setLoadingRoutes] = useState(false);
+            const [loadingStops, setLoadingStops] = useState(false);
+            const [loadingEta, setLoadingEta] = useState(false);
+
+            useEffect(() => {
+                const fetchGmbRoutes = async () => {
+                    setLoadingRoutes(true);
+                    try {
+                        const res = await fetch(`https://data.etagmb.gov.hk/route/${region}`);
+                        const data = await res.json();
+                        setRoutesList(data.data?.routes || []);
+                    } catch (err) {
+                        console.error("Error loading GMB routes:", err);
+                        setRoutesList([]);
+                    } finally {
+                        setLoadingRoutes(false);
+                    }
+                };
+                fetchGmbRoutes();
+            }, [region]);
+
+            const filteredRoutes = useMemo(() => {
+                if (!searchCode.trim()) return routesList.slice(0, 30);
+                return routesList.filter(r => r.toUpperCase().includes(searchCode.trim().toUpperCase()));
+            }, [routesList, searchCode]);
+
+            const handleSelectRoute = async (routeCode) => {
+                setLoadingStops(true);
+                setSelectedStop(null);
+                setEtaData([]);
+                try {
+                    const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${routeCode}`);
+                    const data = await res.json();
+                    const routeInfo = data.data?.[0];
+                    if (routeInfo) {
+                        setSelectedRoute(routeInfo);
+                        const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${routeInfo.route_id}/1`);
+                        const sData = await sRes.json();
+                        setRouteStops(sData.data?.route_stops || []);
+                    }
+                } catch (err) {
+                    console.error("Error fetching GMB stops:", err);
+                } finally {
+                    setLoadingStops(false);
+                }
+            };
+
+            const fetchGmbEta = useCallback(async (stop) => {
+                if (!selectedRoute || !stop) return;
+                setSelectedStop(stop);
+                setLoadingEta(true);
+                try {
+                    const res = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${selectedRoute.route_id}/1/${stop.stop_seq}`);
+                    const data = await res.json();
+                    setEtaData(data.data?.eta || []);
+                } catch (err) {
+                    console.error("Error fetching GMB ETA:", err);
+                    setEtaData([]);
+                } finally {
+                    setLoadingEta(false);
+                }
+            }, [selectedRoute]);
+
+            useEffect(() => {
+                if (!selectedStop) return;
+                const interval = setInterval(() => {
+                    fetchGmbEta(selectedStop);
+                }, 60000);
+                return () => clearInterval(interval);
+            }, [selectedStop, fetchGmbEta]);
+
+            return (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                            <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 font-bold text-sm">
+                                <i className="fa-solid fa-van-shuttle mr-1"></i>專線小巴
+                            </span>
+                            <span className="text-xs text-slate-400">綠色小巴實時到站</span>
+                        </div>
+
+                        <div className="flex bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl text-xs font-semibold">
+                            {[
+                                { key: 'HKI', label: '港島' },
+                                { key: 'KLN', label: '九龍' },
+                                { key: 'NT', label: '新界' }
+                            ].map((reg) => (
+                                <button
+                                    key={reg.key}
+                                    onClick={() => { setRegion(reg.key); setSelectedRoute(null); setSelectedStop(null); }}
+                                    className={`px-3 py-1.5 rounded-lg transition ${region === reg.key ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}
+                                >
+                                    {reg.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="mb-4">
+                        <input
+                            type="text"
+                            value={searchCode}
+                            onChange={(e) => setSearchCode(e.target.value)}
+                            placeholder="篩選專線小巴號碼 (例如: 28, 69)..."
+                            className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-slate-100"
+                        />
+                    </div>
+
+                    <div className="mb-4">
+                        <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">路線選擇</h4>
+                        {loadingRoutes ? (
+                            <div className="p-4 text-center text-slate-400 text-xs">
+                                <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入小巴路線中...
+                            </div>
+                        ) : (
+                            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1 scrollbar-thin">
+                                {filteredRoutes.map((rCode) => (
+                                    <button
+                                        key={rCode}
+                                        onClick={() => handleSelectRoute(rCode)}
+                                        className={`px-3 py-1 rounded-lg text-xs font-bold transition border ${selectedRoute?.route_code === rCode ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 dark:bg-slate-700/30 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'}`}
+                                    >
+                                        {rCode}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {selectedRoute && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+                            <div>
+                                <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">小巴站列表</h4>
+                                {loadingStops ? (
+                                    <div className="p-6 text-center text-slate-400 text-xs">
+                                        <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入車站清單中...
+                                    </div>
+                                ) : (
+                                    <div className="max-h-56 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+                                        {routeStops.map((stop) => (
+                                            <button
+                                                key={stop.stop_seq}
+                                                onClick={() => fetchGmbEta(stop)}
+                                                className={`w-full p-2.5 rounded-xl text-left text-xs transition flex justify-between items-center border ${selectedStop?.stop_seq === stop.stop_seq ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 text-emerald-700 dark:text-emerald-300 font-semibold' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-100 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                            >
+                                                <span className="truncate pr-2">{stop.stop_seq}. {stop.name_tc}</span>
+                                                <i className="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div>
+                                <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">即時小巴班次</h4>
+                                {selectedStop ? (
+                                    <div className="p-4 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-200/80 dark:border-slate-700 space-y-3">
+                                        <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-600 pb-2">
+                                            <span className="font-bold text-sm text-slate-800 dark:text-slate-100">{selectedStop.name_tc}</span>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => toggleFavorite({
+                                                        id: `GMB-${selectedRoute.route_id}-${selectedStop.stop_seq}`,
+                                                        type: 'GMB',
+                                                        routeId: selectedRoute.route_id,
+                                                        routeCode: selectedRoute.route_code,
+                                                        stopSeq: selectedStop.stop_seq,
+                                                        stopName: selectedStop.name_tc
+                                                    })}
+                                                    className="p-1.5 text-amber-500 hover:scale-110 transition"
+                                                    title="加入最愛"
+                                                >
+                                                    <i className={`${isFavorite(`GMB-${selectedRoute.route_id}-${selectedStop.stop_seq}`) ? 'fa-solid' : 'fa-regular'} fa-star text-lg`}></i>
+                                                </button>
+                                                <button
+                                                    onClick={() => fetchGmbEta(selectedStop)}
+                                                    className="p-1.5 text-slate-500 hover:text-emerald-500 transition"
+                                                >
+                                                    <i className={`fa-solid fa-rotate ${loadingEta ? 'fa-spin' : ''}`}></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {loadingEta ? (
+                                            <div className="p-6 text-center text-slate-400 text-xs">
+                                                <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入班次中...
+                                            </div>
+                                        ) : etaData.length > 0 ? (
+                                            <div className="space-y-2">
+                                                {etaData.map((eta, i) => {
+                                                    const remMins = calculateRemainingMinutes(eta.timestamp);
+                                                    return (
+                                                        <div key={i} className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs">
+                                                            <div>
+                                                                <span className="font-semibold text-slate-700 dark:text-slate-200">班次 {i + 1}</span>
+                                                                <span className="ml-2 text-[11px] text-slate-400">{eta.remarks_tc || '即時預測'}</span>
+                                                            </div>
+                                                            <div>
+                                                                {remMins === null ? (
+                                                                    <span className="text-slate-400">--</span>
+                                                                ) : remMins <= 0 ? (
+                                                                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 font-bold rounded animate-pulse">即將抵達</span>
+                                                                ) : (
+                                                                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{remMins} 分鐘</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <div className="p-6 text-center text-slate-400 text-xs">暫無小巴班次數據</div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="p-8 text-center text-slate-400 text-xs bg-slate-50 dark:bg-slate-700/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                                        請在左側選擇小巴站
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Favorite Card Component
+        function FavoriteCard({ fav, toggleFavorite }) {
+            const [etaList, setEtaList] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            const fetchFavEta = useCallback(async () => {
+                setLoading(true);
+                try {
+                    if (fav.type === 'BUS') {
+                        let url = fav.company === 'KMB'
+                            ? `https://data.etabus.gov.hk/v1/transport/kmb/eta/${fav.stopId}/${fav.route}/1`
+                            : `https://rt.data.gov.hk/v1/transport/citybus-nwfb/eta/ctb/${fav.stopId}/${fav.route}`;
+                        const res = await fetch(url);
+                        const data = await res.json();
+                        setEtaList(data.data ? data.data.filter(i => i.eta).slice(0, 2) : []);
+                    } else if (fav.type === 'MTR') {
+                        const res = await fetch(`https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=${fav.line}&sta=${fav.stationCode}&lang=TC`);
+                        const data = await res.json();
+                        const key = `${fav.line}-${fav.stationCode}`;
+                        if (data.status === 1 && data.data && data.data[key]) {
+                            const up = data.data[key].UP || [];
+                            const down = data.data[key].DOWN || [];
+                            setEtaList([...up.slice(0, 1), ...down.slice(0, 1)]);
+                        }
+                    } else if (fav.type === 'GMB') {
+                        const res = await fetch(`https://etagmb.gov.hk/eta/route-stop/${fav.routeId}/1/${fav.stopSeq}`);
+                        const data = await res.json();
+                        setEtaList(data.data?.[0]?.eta ? data.data[0].eta.slice(0, 2) : []);
+                    } else if (fav.type === 'AEE') {
+                        const targetUrl = encodeURIComponent(`https://www.ha.org.hk/aedwt/data/aedWtData2.json`);
+                        const proxyUrl = `https://api.allorigins.win/raw?url=${targetUrl}`;
+                        const res = await fetch(proxyUrl);
+                        const data = await res.json();
+                        const list = data.result || data.hospitals || data;
+                        const match = list.find(h => h.hospName === fav.hospName);
+                        if (match) {
+                            setEtaList([{ isAee: true, waitingTime: match.waitingTime }]);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error fetching fav ETA:", e);
+                } finally {
+                    setLoading(false);
+                }
+            }, [fav]);
+
+            useEffect(() => {
+                fetchFavEta();
+                const interval = setInterval(fetchFavEta, 60000);
+                return () => clearInterval(interval);
+            }, [fetchFavEta]);
+
+            return (
+                <div className="p-3.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative group">
                     <button
-                      key={idx}
-                      onClick={() => fetchETA(s)}
-                      className={`w-full text-left p-2.5 rounded-xl border text-xs flex justify-between items-center transition ${selectedStop?.stopId === s.stopId ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-600 dark:text-red-400 font-bold' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100'}`}
+                        onClick={() => toggleFavorite(fav)}
+                        className="absolute top-2.5 right-2.5 text-amber-500 hover:scale-110 transition"
+                        title="取消收藏"
                     >
-                      <span>{s.seq}. {s.name}</span>
-                      <i className="fa-solid fa-chevron-right text-[10px] opacity-60"></i>
+                        <i className="fa-solid fa-star text-sm"></i>
                     </button>
-                  ))}
-                </div>
-              </div>
 
-              <div>
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">實時班次預報</h4>
-                {selectedStop ? (
-                  <div className="p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl border border-slate-200 dark:border-slate-700">
-                    <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-200 dark:border-slate-600">
-                      <div>
-                        <div className="font-bold text-sm text-slate-800 dark:text-slate-100">{selectedStop.name}</div>
-                        <div className="text-xs text-slate-400">{company} 路線 {route}</div>
-                      </div>
-                      <button
-                        onClick={() => onAddFavorite({ type: 'BUS', company, route, stopName: selectedStop.name, stopId: selectedStop.stopId })}
-                        className="p-2 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white transition text-xs font-bold flex items-center gap-1"
-                      >
-                        <i className="fa-solid fa-star"></i>加入最愛
-                      </button>
+                    <div className="mb-2 pr-6">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 mr-2">
+                            {fav.type === 'BUS' ? `${fav.company} ${fav.route}` : fav.type === 'MTR' ? `${fav.lineName}` : fav.type === 'GMB' ? `小巴 ${fav.routeCode}` : '急症室'}
+                        </span>
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate block mt-1">
+                            {fav.stopName || fav.stationName || fav.hospName}
+                        </span>
                     </div>
 
-                    <div className="space-y-2">
-                      {etaList.length > 0 ? etaList.map((eta, i) => (
-                        <div key={i} className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center text-xs">
-                          <span className="text-slate-500">往 {eta.dest_tc || "目的地"}</span>
-                          <span className="font-extrabold text-red-600 dark:text-red-400 text-sm">
-                            {eta.eta ? `${Math.max(0, Math.round((new Date(eta.eta) - new Date()) / 60000))} 分鐘` : "即將到達"}
-                          </span>
+                    {loading ? (
+                        <div className="text-[11px] text-slate-400 py-1"><i className="fa-solid fa-spinner fa-spin mr-1"></i>載入中...</div>
+                    ) : fav.type === 'AEE' ? (
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-500">最長等候時間</span>
+                            <span className="font-bold text-rose-600 dark:text-rose-400">{etaList[0]?.waitingTime || '--'}</span>
                         </div>
-                      )) : (
-                        <div className="text-xs text-slate-400 py-3 text-center">正在獲取或暫無班次數據...</div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">
-                    請點擊左側車站查看實時到站時間
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    function MTRSection({ onAddFavorite }) {
-      const [line, setLine] = useState("TKL");
-      const [station, setStation] = useState("TKO");
-      const [schedule, setSchedule] = useState(null);
-      const [loading, setLoading] = useState(false);
-
-      const fetchMTR = useCallback(async () => {
-        setLoading(true);
-        try {
-          const res = await fetchWithProxy(`https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=${line}&sta=${station}`);
-          if (res && res.data && res.data[`${line}-${station}`]) {
-            setSchedule(res.data[`${line}-${station}`]);
-          } else {
-            setSchedule(null);
-          }
-        } catch (e) {
-          console.error("MTR error", e);
-        } finally {
-          setLoading(false);
-        }
-      }, [line, station]);
-
-      useEffect(() => {
-        fetchMTR();
-        const interval = setInterval(fetchMTR, 60000);
-        return () => clearInterval(interval);
-      }, [fetchMTR]);
-
-      const currentLineObj = MTR_DATA[line] || MTR_DATA.TKL;
-
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-sm">
-              <i className="fa-solid fa-train-subway mr-1.5"></i>港鐵實時班次 (MTR)
-            </span>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mb-4">
-            {Object.keys(MTR_DATA).map(k => (
-              <button
-                key={k}
-                onClick={() => { setLine(k); setStation(MTR_DATA[k].stations[0].code); }}
-                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition ${line === k ? `${MTR_DATA[k].color} text-white shadow-sm` : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
-              >
-                {MTR_DATA[k].name}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between gap-2 mb-4 bg-slate-50 dark:bg-slate-700/30 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-semibold">選擇車站：</span>
-              <select
-                value={station}
-                onChange={(e) => setStation(e.target.value)}
-                className="px-3 py-1.5 text-xs bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 font-bold dark:text-slate-100"
-              >
-                {currentLineObj.stations.map((sta) => (
-                  <option key={sta.code} value={sta.code}>{sta.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              onClick={() => {
-                const staObj = currentLineObj.stations.find(s => s.code === station);
-                onAddFavorite({ type: 'MTR', line, station, lineName: currentLineObj.name, stationName: staObj ? staObj.name : station });
-              }}
-              className="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white transition text-xs font-bold flex items-center gap-1"
-            >
-              <i className="fa-solid fa-star"></i>加入最愛
-            </button>
-          </div>
-
-          {loading ? (
-            <div className="py-6 text-center text-slate-400 text-xs">
-              <i className="fa-solid fa-spinner fa-spin mr-2"></i>正在載入港鐵班次...
-            </div>
-          ) : schedule ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-3 bg-slate-50 dark:bg-slate-700/30 rounded-xl border border-slate-200 dark:border-slate-700">
-                <div className="text-xs font-bold text-slate-500 mb-2 border-b pb-1">上行 / 往方向 A</div>
-                {schedule.UP && schedule.UP.length > 0 ? schedule.UP.map((train, i) => (
-                  <div key={i} className="flex justify-between items-center text-xs py-1.5 border-b border-slate-100 dark:border-slate-700 last:border-0">
-                    <span className="font-medium text-slate-700 dark:text-slate-200">往 {train.dest} ({train.plat}號月台)</span>
-                    <span className="font-extrabold text-purple-600 dark:text-purple-400">{train.ttnt} 分鐘</span>
-                  </div>
-                )) : <div className="text-xs text-slate-400 py-2">尾班車已過或暫無資料</div>}
-              </div>
-
-              <div className="p-3 bg-slate-50 dark:bg-slate-700/30 rounded-xl border border-slate-200 dark:border-slate-700">
-                <div className="text-xs font-bold text-slate-500 mb-2 border-b pb-1">下行 / 往方向 B</div>
-                {schedule.DOWN && schedule.DOWN.length > 0 ? schedule.DOWN.map((train, i) => (
-                  <div key={i} className="flex justify-between items-center text-xs py-1.5 border-b border-slate-100 dark:border-slate-700 last:border-0">
-                    <span className="font-medium text-slate-700 dark:text-slate-200">往 {train.dest} ({train.plat}號月台)</span>
-                    <span className="font-extrabold text-purple-600 dark:text-purple-400">{train.ttnt} 分鐘</span>
-                  </div>
-                )) : <div className="text-xs text-slate-400 py-2">尾班車已過或暫無資料</div>}
-              </div>
-            </div>
-          ) : (
-            <div className="text-xs text-slate-400 py-6 text-center">暫無即時服務數據或該車站非轉乘服務點。</div>
-          )}
-        </div>
-      );
-    }
-
-    function GMBSection({ onAddFavorite }) {
-      const [region, setRegion] = useState("KLN");
-      const [route, setRoute] = useState("16");
-
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-sm">
-              <i className="fa-solid fa-van-shuttle mr-1.5"></i>綠色專線小巴 (GMB)
-            </span>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mb-4">
-            {[{ id: 'KLN', name: '九龍' }, { id: 'NT', name: '新界' }, { id: 'HK', name: '港島' }].map(r => (
-              <button
-                key={r.id}
-                onClick={() => setRegion(r.id)}
-                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition ${region === r.id ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}
-              >
-                {r.name}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              value={route}
-              onChange={(e) => setRoute(e.target.value)}
-              placeholder="小巴路線號碼 (例如 16, 11M, 20M)..."
-              className="flex-1 px-3 py-2 text-xs bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-slate-100"
-            />
-          </div>
-
-          <div className="p-4 bg-slate-50 dark:bg-slate-700/30 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center">
-            <div>
-              <div className="font-bold text-slate-800 dark:text-slate-100 text-sm">{region} 專線小巴 {route} 號</div>
-              <div className="text-xs text-slate-400 mt-0.5">即時班次 Open Data 接口已準備就緒</div>
-            </div>
-            <button
-              onClick={() => onAddFavorite({ type: 'GMB', region, route, stopName: `${region} ${route}小巴` })}
-              className="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white transition text-xs font-bold flex items-center gap-1"
-            >
-              <i className="fa-solid fa-star"></i>加入最愛
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    function FavoritesSection({ favorites, onRemoveFavorite }) {
-      if (!favorites || favorites.length === 0) {
-        return (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 text-center shadow-sm border border-slate-200 dark:border-slate-700">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl mx-auto mb-3">
-              <i className="fa-solid fa-star"></i>
-            </div>
-            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm mb-1">未有已儲存的「我的最愛」</h3>
-            <p className="text-xs text-slate-400">你可以在巴士、港鐵或專線小巴頁面點擊「加入最愛」按鈕。</p>
-          </div>
-        );
-      }
-
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-sm">
-              <i className="fa-solid fa-star mr-1.5"></i>我的最愛路線 / 車站 ({favorites.length})
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {favorites.map((fav, index) => (
-              <div key={index} className="p-3.5 bg-slate-50 dark:bg-slate-700/30 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-black text-white ${fav.type === 'BUS' ? 'bg-red-600' : fav.type === 'MTR' ? 'bg-purple-600' : 'bg-emerald-600'}`}>
-                      {fav.type}
-                    </span>
-                    <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
-                      {fav.type === 'BUS' ? `${fav.company} ${fav.route}` : fav.type === 'MTR' ? fav.lineName : `${fav.region} ${fav.route}`}
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-300 font-medium">{fav.stopName || fav.stationName}</div>
+                    ) : etaList.length > 0 ? (
+                        <div className="space-y-1">
+                            {etaList.map((item, idx) => {
+                                const timeVal = item.eta || item.time || item.timestamp;
+                                const rem = calculateRemainingMinutes(timeVal);
+                                const destStr = item.dest_tc ? item.dest_tc : item.dest ? (MTR_STATION_NAMES[item.dest] || item.dest) : null;
+                                return (
+                                    <div key={idx} className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-500 dark:text-slate-400 truncate mr-2">
+                                            {destStr ? `往 ${destStr}` : '下一班車'}
+                                        </span>
+                                        <span className="font-bold text-sky-600 dark:text-sky-400 shrink-0">
+                                            {rem === null ? '--' : rem <= 0 ? '即將到站' : `${rem} 分鐘`}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="text-[11px] text-slate-400">現無班次數據</div>
+                    )}
                 </div>
-
-                <button
-                  onClick={() => onRemoveFavorite(index)}
-                  className="text-slate-400 hover:text-rose-500 p-1 text-xs transition"
-                  title="移除最愛"
-                >
-                  <i className="fa-solid fa-trash-can"></i>
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    function App() {
-      const [activeTab, setActiveTab] = useState("weather");
-      const [fontSizeLarge, setFontSizeLarge] = useState(false);
-      const [favorites, setFavorites] = useState(() => {
-        try {
-          const saved = localStorage.getItem("hk_info_favs");
-          return saved ? JSON.parse(saved) : [];
-        } catch (e) {
-          return [];
+            );
         }
-      });
-      const [toast, setToast] = useState("");
 
-      const showToast = (msg) => {
-        setToast(msg);
-        setTimeout(() => setToast(""), 2500);
-      };
+        // Live Hong Kong Time Clock
+        function HKClock() {
+            const [timeStr, setTimeStr] = useState('');
 
-      const handleAddFavorite = (item) => {
-        const updated = [...favorites, item];
-        setFavorites(updated);
-        try {
-          localStorage.setItem("hk_info_favs", JSON.stringify(updated));
-        } catch (e) {}
-        showToast("已成功加入「我的最愛」！");
-      };
+            useEffect(() => {
+                const updateClock = () => {
+                    const now = new Date();
+                    const formattedTime = now.toLocaleTimeString('zh-HK', {
+                        timeZone: 'Asia/Hong_Kong',
+                        hour12: false,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                    const formattedDate = now.toLocaleDateString('zh-HK', {
+                        timeZone: 'Asia/Hong_Kong',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    });
+                    setTimeStr(`${formattedDate} ${formattedTime}`);
+                };
 
-      const handleRemoveFavorite = (index) => {
-        const updated = favorites.filter((_, i) => i !== index);
-        setFavorites(updated);
-        try {
-          localStorage.setItem("hk_info_favs", JSON.stringify(updated));
-        } catch (e) {}
-        showToast("已移除「我的最愛」。");
-      };
+                updateClock();
+                const timer = setInterval(updateClock, 1000);
+                return () => clearInterval(timer);
+            }, []);
 
-      return (
-        <div className={`max-w-5xl mx-auto p-3 sm:p-5 ${fontSizeLarge ? 'large-font-mode' : ''}`}>
-          {/* Toast Notification */}
-          {toast && (
-            <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold flex items-center gap-2 animate-bounce">
-              <i className="fa-solid fa-circle-check text-emerald-400"></i>
-              <span>{toast}</span>
-            </div>
-          )}
+            return (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700/60 rounded-xl text-[30px] font-mono font-semibold text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-600/80 shadow-inner">
+                    <i className="fa-regular fa-clock text-sky-500"></i>
+                    <span>{timeStr || '--:--:--'}</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded font-sans shrink-0">HKT</span>
+                </div>
+            );
+        }
 
-          {/* Header Bar */}
-          <header className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-5 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center font-black text-xl shadow-md shrink-0">
-                港
-              </div>
-              <div>
-                <h1 className="font-extrabold text-slate-900 dark:text-white text-base sm:text-lg leading-tight">
-                  香港實時資訊綜合平台
-                </h1>
-                <p className="text-xs text-slate-400">天氣 ‧ 巴士 ‧ 港鐵 ‧ 小巴 ‧ 急症室實時 Open Data</p>
-              </div>
-            </div>
+        // Main Root Application
+        function App() {
+            const [darkMode, setDarkMode] = useState(false);
+            const [favorites, setFavorites] = useState([]);
+            const [activeTab, setActiveTab] = useState('ALL');
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setFontSizeLarge(!fontSizeLarge)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition shrink-0 ${fontSizeLarge ? 'bg-sky-600 text-white border-sky-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600'}`}
-              >
-                <i className="fa-solid fa-font mr-1"></i>
-                {fontSizeLarge ? "標準字體" : "放大字體 (30px)"}
-              </button>
-            </div>
-          </header>
+            useEffect(() => {
+                const saved = localStorage.getItem('hk_transit_favs');
+                if (saved) {
+                    try {
+                        setFavorites(JSON.parse(saved));
+                    } catch (e) {}
+                }
+            }, []);
 
-          {/* Tab Navigation */}
-          <nav className="flex gap-1.5 overflow-x-auto pb-2 mb-5 scrollbar-thin">
-            {[
-              { id: 'weather', name: '天氣預報', icon: 'fa-cloud-sun' },
-              { id: 'bus', name: '巴士到站', icon: 'fa-bus' },
-              { id: 'mtr', name: '港鐵班次', icon: 'fa-train-subway' },
-              { id: 'gmb', name: '專線小巴', icon: 'fa-van-shuttle' },
-              { id: 'ha', name: '急症室等候', icon: 'fa-hospital' },
-              { id: 'fav', name: `我的最愛 (${favorites.length})`, icon: 'fa-star' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition flex items-center gap-2 border ${activeTab === tab.id ? 'bg-sky-600 text-white border-sky-600 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
-              >
-                <i className={`fa-solid ${tab.icon}`}></i>
-                <span>{tab.name}</span>
-              </button>
-            ))}
-          </nav>
+            const toggleDarkMode = () => {
+                setDarkMode(!darkMode);
+                document.documentElement.classList.toggle('dark');
+            };
 
-          {/* Active Tab View */}
-          <main className="space-y-5">
-            {activeTab === 'weather' && <WeatherSection />}
-            {activeTab === 'bus' && <BusSection onAddFavorite={handleAddFavorite} />}
-            {activeTab === 'mtr' && <MTRSection onAddFavorite={handleAddFavorite} />}
-            {activeTab === 'gmb' && <GMBSection onAddFavorite={handleAddFavorite} />}
-            {activeTab === 'ha' && <HospitalSection />}
-            {activeTab === 'fav' && <FavoritesSection favorites={favorites} onRemoveFavorite={handleRemoveFavorite} />}
-          </main>
+            const toggleFavorite = (item) => {
+                let updated = [];
+                if (favorites.some(f => f.id === item.id)) {
+                    updated = favorites.filter(f => f.id !== item.id);
+                } else {
+                    updated = [...favorites, item];
+                }
+                setFavorites(updated);
+                localStorage.setItem('hk_transit_favs', JSON.stringify(updated));
+            };
 
-          {/* Footer */}
-          <footer className="mt-8 text-center text-xs text-slate-400 pb-6">
-            <p>數據來源：香港政府資料一線通 (data.gov.hk) / 香港天文台 / 醫院管理局</p>
-          </footer>
-        </div>
-      );
-    }
+            const isFavorite = (id) => favorites.some(f => f.id === id);
 
-    window.onload = function() {
-      const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(<App />);
-    };
-  </script>
+            return (
+                <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+                    <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center text-[30px] font-bold shrink-0">
+                                <i className="fa-solid fa-cloud-sun-rain"></i>
+                            </div>
+                            <div>
+                                <h1 className="text-[30px] font-extrabold bg-gradient-to-r from-sky-600 to-indigo-600 dark:from-sky-400 dark:to-indigo-400 bg-clip-text text-transparent leading-tight">
+                                    香港天氣、交通及公立醫院急症室報告
+                                </h1>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
+                                    <span>天文台天氣 • 交通實時到站 • 急症室輪候時間</span>
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px]">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                                        自動更新
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5 self-end lg:self-auto flex-wrap">
+                            <HKClock />
+                            <button
+                                onClick={toggleDarkMode}
+                                className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition shrink-0 text-[18px]"
+                                title="切換深色/淺色模式"
+                            >
+                                <i className={`fa-solid ${darkMode ? 'fa-sun text-amber-400' : 'fa-moon'}`}></i>
+                            </button>
+                        </div>
+                    </header>
+
+                    {favorites.length > 0 && (
+                        <section className="space-y-3">
+                            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <i className="fa-solid fa-star text-amber-500"></i> 我的最愛收藏站點及醫院 ({favorites.length})
+                            </h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                {favorites.map((fav) => (
+                                    <FavoriteCard key={fav.id} fav={fav} toggleFavorite={toggleFavorite} />
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    <nav className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                        {[
+                            { key: 'ALL', label: '全部檢視', icon: 'fa-table-cells' },
+                            { key: 'FAV', label: '我的最愛', icon: 'fa-star' },
+                            { key: 'WEATHER', label: '天文台天氣', icon: 'fa-cloud-sun' },
+                            { key: 'AEE', label: '急症室輪候', icon: 'fa-hospital' },
+                            { key: 'BUS', label: '九巴/城巴', icon: 'fa-bus' },
+                            { key: 'MTR', label: '港鐵到站', icon: 'fa-train-subway' },
+                            { key: 'GMB', label: '專線小巴', icon: 'fa-van-shuttle' },
+                        ].map((tab) => (
+                            <button
+                                key={tab.key}
+                                onClick={() => setActiveTab(tab.key)}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-2 border ${activeTab === tab.key ? 'bg-sky-600 text-white border-sky-600 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'}`}
+                            >
+                                <i className={`fa-solid ${tab.icon}`}></i>
+                                <span>{tab.label}</span>
+                            </button>
+                        ))}
+                    </nav>
+
+                    <main className="space-y-6">
+                        {activeTab === 'FAV' && favorites.length === 0 && (
+                            <div className="p-8 text-center text-slate-400 text-sm bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                                <i className="fa-regular fa-star text-3xl mb-3 block text-amber-400"></i>
+                                尚未加入任何最愛項目。請在各分頁中點擊星號加入！
+                            </div>
+                        )}
+
+                        {(activeTab === 'ALL' || activeTab === 'WEATHER') && (
+                            <WeatherSection />
+                        )}
+
+                        {(activeTab === 'ALL' || activeTab === 'AEE') && (
+                            <AeeSection toggleFavorite={toggleFavorite} isFavorite={isFavorite} />
+                        )}
+
+                        {(activeTab === 'ALL' || activeTab === 'BUS') && (
+                            <BusSection toggleFavorite={toggleFavorite} isFavorite={isFavorite} />
+                        )}
+
+                        {(activeTab === 'ALL' || activeTab === 'MTR') && (
+                            <MtrSection toggleFavorite={toggleFavorite} isFavorite={isFavorite} />
+                        )}
+
+                        {(activeTab === 'ALL' || activeTab === 'GMB') && (
+                            <GmbSection toggleFavorite={toggleFavorite} isFavorite={isFavorite} />
+                        )}
+                    </main>
+
+                    <footer className="text-center py-6 text-xs text-slate-400 border-t border-slate-200 dark:border-slate-800">
+                        數據來源 : 香港天文台（天氣報告）、醫院管理局（急症室輪候時間）及資料一線通 DATA.GOV.HK（公共交通實時到站） • 每 60 秒自動更新
+                    </footer>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
