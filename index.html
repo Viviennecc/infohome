@@ -920,252 +920,254 @@ function MtrSection({ toggleFavorite, isFavorite }) {
 //}
 
 // Green Minibus Section
-function GmbSection({ toggleFavorite, isFavorite }) {
-    const [region, setRegion] = useState('HKI'); // HKI, KLN, NT
-    const [searchCode, setSearchCode] = useState('');
-    const [routesList, setRoutesList] = useState([]);
-    const [selectedRoute, setSelectedRoute] = useState(null);
-    const [routeStops, setRouteStops] = useState([]);
-    const [selectedStop, setSelectedStop] = useState(null);
-    const [etaData, setEtaData] = useState([]);
-    const [loadingRoutes, setLoadingRoutes] = useState(false);
-    const [loadingStops, setLoadingStops] = useState(false);
-    const [loadingEta, setLoadingEta] = useState(false);
+        function GmbSection({ toggleFavorite, isFavorite }) {
+            const [region, setRegion] = useState('HKI'); // HKI, KLN, NT
+            const [searchCode, setSearchCode] = useState('');
+            const [routesList, setRoutesList] = useState([]);
+            const [selectedRoute, setSelectedRoute] = useState(null);
+            const [routeStops, setRouteStops] = useState([]);
+            const [selectedStop, setSelectedStop] = useState(null);
+            const [etaData, setEtaData] = useState([]);
+            const [loadingRoutes, setLoadingRoutes] = useState(false);
+            const [loadingStops, setLoadingStops] = useState(false);
+            const [loadingEta, setLoadingEta] = useState(false);
 
-    // Load GMB Routes list by Region
-    useEffect(() => {
-        const fetchGmbRoutes = async () => {
-            setLoadingRoutes(true);
-            try {
-                const res = await fetch(`https://etagmb.gov.hk/route/${region}`);
-                const data = await res.json();
-                setRoutesList(data.data || []);
-            } catch (err) {
-                console.error("Error loading GMB routes:", err);
-                setRoutesList([]);
-            } finally {
-                setLoadingRoutes(false);
-            }
-        };
-        fetchGmbRoutes();
-    }, [region]);
+            // Load GMB Routes list by Region
+            useEffect(() => {
+                const fetchGmbRoutes = async () => {
+                    setLoadingRoutes(true);
+                    try {
+                        const res = await fetch(`https://etagmb.gov.hk/route/${region}`);
+                        const data = await res.json();
+                        // 官方 API 回傳的 data.data 是一組包含 route_code 的物件陣列
+                        setRoutesList(data.data || []);
+                    } catch (err) {
+                        console.error("Error loading GMB routes:", err);
+                        setRoutesList([]);
+                    } finally {
+                        setLoadingRoutes(false);
+                    }
+                };
+                fetchGmbRoutes();
+            }, [region]);
 
-    // Filter routes by input search code
-    const filteredRoutes = useMemo(() => {
-        if (!searchCode.trim()) return routesList.slice(0, 30);
-        return routesList.filter(r => r.route_code?.toUpperCase().includes(searchCode.trim().toUpperCase()));
-    }, [routesList, searchCode]);
+            // Filter routes by input search code
+            const filteredRoutes = useMemo(() => {
+                if (!searchCode.trim()) return routesList.slice(0, 30);
+                return routesList.filter(r => r.route_code?.toUpperCase().includes(searchCode.trim().toUpperCase()));
+            }, [routesList, searchCode]);
 
-    // Select GMB Route
-    const handleSelectRoute = async (routeObj) => {
-        setLoadingStops(true);
-        setSelectedRoute(null);
-        setSelectedStop(null);
-        setEtaData([]);
-        try {
-            const res = await fetch(`https://etagmb.gov.hk/route/${region}/${routeObj.route_code}`);
-            const data = await res.json();
-            const routeInfo = data.data?.[0];
-            if (routeInfo) {
-                setSelectedRoute(routeInfo);
-                const sRes = await fetch(`https://etagmb.gov.hk/route-stop/${routeInfo.route_id}/1`);
-                const sData = await sRes.json();
-                setRouteStops(sData.data?.route_stops || []);
-            }
-        } catch (err) {
-            console.error("Error fetching GMB stops:", err);
-        } finally {
-            setLoadingStops(false);
-        }
-    };
+            // Select GMB Route
+            const handleSelectRoute = async (routeObj) => {
+                setLoadingStops(true);
+                setSelectedRoute(null);
+                setSelectedStop(null);
+                setEtaData([]);
+                try {
+                    const res = await fetch(`https://etagmb.gov.hk/route/${region}/${routeObj.route_code}`);
+                    const data = await res.json();
+                    // 取得該路線的第一個方向（通常 route_seq 為 1）
+                    const routeInfo = data.data?.[0];
+                    if (routeInfo) {
+                        setSelectedRoute(routeInfo);
+                        // Fetch stops for seq 1
+                        const sRes = await fetch(`https://etagmb.gov.hk/route-stop/${routeInfo.route_id}/1`);
+                        const sData = await sRes.json();
+                        setRouteStops(sData.data?.route_stops || []);
+                    }
+                } catch (err) {
+                    console.error("Error fetching GMB stops:", err);
+                } finally {
+                    setLoadingStops(false);
+                }
+            };
 
-    // Fetch GMB Real-time ETA
-    const fetchGmbEta = useCallback(async (stop) => {
-        if (!selectedRoute || !stop) return;
-        setSelectedStop(stop);
-        setLoadingEta(true);
-        try {
-            const res = await fetch(`https://etagmb.gov.hk/eta/route-stop/${selectedRoute.route_id}/1/${stop.stop_seq}`);
-            const data = await res.json();
-            setEtaData(data.data?.[0]?.eta || []);
-        } catch (err) {
-            console.error("Error fetching GMB ETA:", err);
-            setEtaData([]);
-        } finally {
-            setLoadingEta(false);
-        }
-    }, [selectedRoute]);
+            // Fetch GMB Real-time ETA
+            const fetchGmbEta = useCallback(async (stop) => {
+                if (!selectedRoute || !stop) return;
+                setSelectedStop(stop);
+                setLoadingEta(true);
+                try {
+                    const res = await fetch(`https://etagmb.gov.hk/eta/route-stop/${selectedRoute.route_id}/1/${stop.stop_seq}`);
+                    const data = await res.json();
+                    setEtaData(data.data?.[0]?.eta || []);
+                } catch (err) {
+                    console.error("Error fetching GMB ETA:", err);
+                    setEtaData([]);
+                } finally {
+                    setLoadingEta(false);
+                }
+            }, [selectedRoute]);
 
-    // Auto refresh GMB ETA every 60 seconds
-    useEffect(() => {
-        if (!selectedStop) return;
-        const interval = setInterval(() => {
-            fetchGmbEta(selectedStop);
-        }, 60000);
-        return () => clearInterval(interval);
-    }, [selectedStop, fetchGmbEta]);
+            // Auto refresh GMB ETA every 60 seconds
+            useEffect(() => {
+                if (!selectedStop) return;
+                const interval = setInterval(() => {
+                    fetchGmbEta(selectedStop);
+                }, 60000);
+                return () => clearInterval(interval);
+            }, [selectedStop, fetchGmbEta]);
 
-    return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                    <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 font-bold text-sm">
-                        <i className="fa-solid fa-van-shuttle mr-1"></i>專線小巴
-                    </span>
-                    <span className="text-xs text-slate-400">綠色小巴實時到站</span>
-                </div>
+            return (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                            <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 font-bold text-sm">
+                                <i className="fa-solid fa-van-shuttle mr-1"></i>專線小巴
+                            </span>
+                            <span className="text-xs text-slate-400">綠色小巴實時到站</span>
+                        </div>
 
-                {/* Region Selector */}
-                <div className="flex bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl text-xs font-semibold">
-                    {[
-                        { key: 'HKI', label: '港島' },
-                        { key: 'KLN', label: '九龍' },
-                        { key: 'NT', label: '新界' }
-                    ].map((reg) => (
-                        <button
-                            key={reg.key}
-                            onClick={() => { setRegion(reg.key); setSelectedRoute(null); setSelectedStop(null); }}
-                            className={`px-3 py-1.5 rounded-lg transition ${region === reg.key ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}
-                        >
-                            {reg.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Filter Input */}
-            <div className="mb-4">
-                <input
-                    type="text"
-                    value={searchCode}
-                    onChange={(e) => setSearchCode(e.target.value)}
-                    placeholder="篩選專線小巴號碼 (例如: 28, 69)..."
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-slate-100"
-                />
-            </div>
-
-            {/* Route Chips Grid */}
-            <div className="mb-4">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">路線選擇</h4>
-                {loadingRoutes ? (
-                    <div className="p-4 text-center text-slate-400 text-xs">
-                        <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入小巴路線中...
+                        {/* Region Selector */}
+                        <div className="flex bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl text-xs font-semibold">
+                            {[
+                                { key: 'HKI', label: '港島' },
+                                { key: 'KLN', label: '九龍' },
+                                { key: 'NT', label: '新界' }
+                            ].map((reg) => (
+                                <button
+                                    key={reg.key}
+                                    onClick={() => { setRegion(reg.key); setSelectedRoute(null); setSelectedStop(null); }}
+                                    className={`px-3 py-1.5 rounded-lg transition ${region === reg.key ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}
+                                >
+                                    {reg.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                ) : (
-                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1 scrollbar-thin">
-                        {filteredRoutes.map((routeObj, idx) => (
-                            <button
-                                key={routeObj.route_id || idx}
-                                onClick={() => handleSelectRoute(routeObj)}
-                                className={`px-3 py-1 rounded-lg text-xs font-bold transition border ${selectedRoute?.route_code === routeObj.route_code ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 dark:bg-slate-700/30 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'}`}
-                            >
-                                {routeObj.route_code}
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div>
 
-            {/* Stops and ETA */}
-            {selectedRoute && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100 dark:border-slate-700">
-                    {/* Stops List */}
-                    <div>
-                        <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">小巴站列表</h4>
-                        {loadingStops ? (
-                            <div className="p-6 text-center text-slate-400 text-xs">
-                                <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入車站清單中...
+                    {/* Filter Input */}
+                    <div className="mb-4">
+                        <input
+                            type="text"
+                            value={searchCode}
+                            onChange={(e) => setSearchCode(e.target.value)}
+                            placeholder="篩選專線小巴號碼 (例如: 28, 69)..."
+                            className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:text-slate-100"
+                        />
+                    </div>
+
+                    {/* Route Chips Grid */}
+                    <div className="mb-4">
+                        <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">路線選擇</h4>
+                        {loadingRoutes ? (
+                            <div className="p-4 text-center text-slate-400 text-xs">
+                                <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入小巴路線中...
                             </div>
                         ) : (
-                            <div className="max-h-56 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
-                                {routeStops.map((stop) => (
+                            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1 scrollbar-thin">
+                                {filteredRoutes.map((routeObj, idx) => (
                                     <button
-                                        key={stop.stop_seq}
-                                        onClick={() => fetchGmbEta(stop)}
-                                        className={`w-full p-2.5 rounded-xl text-left text-xs transition flex justify-between items-center border ${selectedStop?.stop_seq === stop.stop_seq ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 text-emerald-700 dark:text-emerald-300 font-semibold' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-100 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                        key={routeObj.route_id || idx}
+                                        onClick={() => handleSelectRoute(routeObj)}
+                                        className={`px-3 py-1 rounded-lg text-xs font-bold transition border ${selectedRoute?.route_code === routeObj.route_code ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 dark:bg-slate-700/30 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'}`}
                                     >
-                                        <span className="truncate pr-2">{stop.stop_seq}. {stop.name_tc}</span>
-                                        <i className="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
+                                        {routeObj.route_code}
                                     </button>
                                 ))}
                             </div>
                         )}
                     </div>
 
-                    {/* ETA Box */}
-                    <div>
-                        <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">即時小巴班次</h4>
-                        {selectedStop ? (
-                            <div className="p-4 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-200/80 dark:border-slate-700 space-y-3">
-                                <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-600 pb-2">
-                                    <span className="font-bold text-sm text-slate-800 dark:text-slate-100">{selectedStop.name_tc}</span>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => toggleFavorite({
-                                                id: `GMB-${selectedRoute.route_id}-${selectedStop.stop_seq}`,
-                                                type: 'GMB',
-                                                routeId: selectedRoute.route_id,
-                                                routeCode: selectedRoute.route_code,
-                                                stopSeq: selectedStop.stop_seq,
-                                                stopName: selectedStop.name_tc
-                                            })}
-                                            className="p-1.5 text-amber-500 hover:scale-110 transition"
-                                            title="加入最愛"
-                                        >
-                                            <i className={`${isFavorite(`GMB-${selectedRoute.route_id}-${selectedStop.stop_seq}`) ? 'fa-solid' : 'fa-regular'} fa-star text-lg`}></i>
-                                        </button>
-                                        <button
-                                            onClick={() => fetchGmbEta(selectedStop)}
-                                            className="p-1.5 text-slate-500 hover:text-emerald-500 transition"
-                                        >
-                                            <i className={`fa-solid fa-rotate ${loadingEta ? 'fa-spin' : ''}`}></i>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {loadingEta ? (
+                    {/* Stops and ETA */}
+                    {selectedRoute && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+                            {/* Stops List */}
+                            <div>
+                                <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">小巴站列表</h4>
+                                {loadingStops ? (
                                     <div className="p-6 text-center text-slate-400 text-xs">
-                                        <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入班次中...
-                                    </div>
-                                ) : etaData.length > 0 ? (
-                                    <div className="space-y-2">
-                                        {etaData.map((eta, i) => {
-                                            const remMins = calculateRemainingMinutes(eta.timestamp);
-                                            return (
-                                                <div key={i} className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs">
-                                                    <div>
-                                                        <span className="font-semibold text-slate-700 dark:text-slate-200">班次 {i + 1}</span>
-                                                        <span className="ml-2 text-[11px] text-slate-400">{eta.remarks_tc || '即時預測'}</span>
-                                                    </div>
-                                                    <div>
-                                                        {remMins === null ? (
-                                                            <span className="text-slate-400">--</span>
-                                                        ) : remMins <= 0 ? (
-                                                            <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 font-bold rounded animate-pulse">即將抵達</span>
-                                                        ) : (
-                                                            <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{remMins} 分鐘</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                        <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入車站清單中...
                                     </div>
                                 ) : (
-                                    <div className="p-6 text-center text-slate-400 text-xs">暫無小巴班次數據</div>
+                                    <div className="max-h-56 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+                                        {routeStops.map((stop) => (
+                                            <button
+                                                key={stop.stop_seq}
+                                                onClick={() => fetchGmbEta(stop)}
+                                                className={`w-full p-2.5 rounded-xl text-left text-xs transition flex justify-between items-center border ${selectedStop?.stop_seq === stop.stop_seq ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 text-emerald-700 dark:text-emerald-300 font-semibold' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-100 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                            >
+                                                <span className="truncate pr-2">{stop.stop_seq}. {stop.name_tc}</span>
+                                                <i className="fa-solid fa-chevron-right text-slate-300 text-[10px]"></i>
+                                            </button>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
-                        ) : (
-                            <div className="p-8 text-center text-slate-400 text-xs bg-slate-50 dark:bg-slate-700/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
-                                請在左側選擇小巴站
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
 
+                            {/* ETA Box */}
+                            <div>
+                                <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">即時小巴班次</h4>
+                                {selectedStop ? (
+                                    <div className="p-4 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-200/80 dark:border-slate-700 space-y-3">
+                                        <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-600 pb-2">
+                                            <span className="font-bold text-sm text-slate-800 dark:text-slate-100">{selectedStop.name_tc}</span>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => toggleFavorite({
+                                                        id: `GMB-${selectedRoute.route_id}-${selectedStop.stop_seq}`,
+                                                        type: 'GMB',
+                                                        routeId: selectedRoute.route_id,
+                                                        routeCode: selectedRoute.route_code,
+                                                        stopSeq: selectedStop.stop_seq,
+                                                        stopName: selectedStop.name_tc
+                                                    })}
+                                                    className="p-1.5 text-amber-500 hover:scale-110 transition"
+                                                    title="加入最愛"
+                                                >
+                                                    <i className={`${isFavorite(`GMB-${selectedRoute.route_id}-${selectedStop.stop_seq}`) ? 'fa-solid' : 'fa-regular'} fa-star text-lg`}></i>
+                                                </button>
+                                                <button
+                                                    onClick={() => fetchGmbEta(selectedStop)}
+                                                    className="p-1.5 text-slate-500 hover:text-emerald-500 transition"
+                                                >
+                                                    <i className={`fa-solid fa-rotate ${loadingEta ? 'fa-spin' : ''}`}></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {loadingEta ? (
+                                            <div className="p-6 text-center text-slate-400 text-xs">
+                                                <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入班次中...
+                                            </div>
+                                        ) : etaData.length > 0 ? (
+                                            <div className="space-y-2">
+                                                {etaData.map((eta, i) => {
+                                                    const remMins = calculateRemainingMinutes(eta.timestamp);
+                                                    return (
+                                                        <div key={i} className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs">
+                                                            <div>
+                                                                <span className="font-semibold text-slate-700 dark:text-slate-200">班次 {i + 1}</span>
+                                                                <span className="ml-2 text-[11px] text-slate-400">{eta.remarks_tc || '即時預測'}</span>
+                                                            </div>
+                                                            <div>
+                                                                {remMins === null ? (
+                                                                    <span className="text-slate-400">--</span>
+                                                                ) : remMins <= 0 ? (
+                                                                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 font-bold rounded animate-pulse">即將抵達</span>
+                                                                ) : (
+                                                                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{remMins} 分鐘</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <div className="p-6 text-center text-slate-400 text-xs">暫無小巴班次數據</div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="p-8 text-center text-slate-400 text-xs bg-slate-50 dark:bg-slate-700/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                                        請在左側選擇小巴站
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
 // Auto-refreshing Favorite Stop Card
         function FavoriteCard({ fav, toggleFavorite }) {
             const [etaList, setEtaList] = useState([]);
