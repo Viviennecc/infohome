@@ -390,7 +390,7 @@
       const fetchHAData = useCallback(async () => {
         setLoading(true);
         try {
-          const res = await fetchWithProxy("https://www.ha.org.hk/opendata/aed/aedwtdata2-tc.json");
+          const res = await fetchWithProxy("https://www.ha.org.hk/aedwt/data/aedWtData2.json");
           if (res && (res.hospData || res.waitTime)) {
             const list = res.hospData || res.waitTime;
             setHospitals(list);
