@@ -937,10 +937,9 @@ function MtrSection({ toggleFavorite, isFavorite }) {
                 const fetchGmbRoutes = async () => {
                     setLoadingRoutes(true);
                     try {
-                        const res = await fetch(`https://etagmb.gov.hk/route/${region}`);
+                        const res = await fetch(`https://data.etagmb.gov.hk/route/${region}`);
                         const data = await res.json();
-                        // 官方 API 回傳的 data.data 是一組包含 route_code 的物件陣列
-                        setRoutesList(data.data || []);
+                        setRoutesList(data.data?.routes || []);
                     } catch (err) {
                         console.error("Error loading GMB routes:", err);
                         setRoutesList([]);
@@ -954,24 +953,22 @@ function MtrSection({ toggleFavorite, isFavorite }) {
             // Filter routes by input search code
             const filteredRoutes = useMemo(() => {
                 if (!searchCode.trim()) return routesList.slice(0, 30);
-                return routesList.filter(r => r.route_code?.toUpperCase().includes(searchCode.trim().toUpperCase()));
+                return routesList.filter(r => r.toUpperCase().includes(searchCode.trim().toUpperCase()));
             }, [routesList, searchCode]);
 
             // Select GMB Route
-            const handleSelectRoute = async (routeObj) => {
+            const handleSelectRoute = async (routeCode) => {
                 setLoadingStops(true);
-                setSelectedRoute(null);
                 setSelectedStop(null);
                 setEtaData([]);
                 try {
-                    const res = await fetch(`https://etagmb.gov.hk/route/${region}/${routeObj.route_code}`);
+                    const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${routeCode}`);
                     const data = await res.json();
-                    // 取得該路線的第一個方向（通常 route_seq 為 1）
                     const routeInfo = data.data?.[0];
                     if (routeInfo) {
                         setSelectedRoute(routeInfo);
                         // Fetch stops for seq 1
-                        const sRes = await fetch(`https://etagmb.gov.hk/route-stop/${routeInfo.route_id}/1`);
+                        const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${routeInfo.route_id}/1`);
                         const sData = await sRes.json();
                         setRouteStops(sData.data?.route_stops || []);
                     }
@@ -988,9 +985,9 @@ function MtrSection({ toggleFavorite, isFavorite }) {
                 setSelectedStop(stop);
                 setLoadingEta(true);
                 try {
-                    const res = await fetch(`https://etagmb.gov.hk/eta/route-stop/${selectedRoute.route_id}/1/${stop.stop_seq}`);
+                    const res = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${selectedRoute.route_id}/1/${stop.stop_seq}`);
                     const data = await res.json();
-                    setEtaData(data.data?.[0]?.eta || []);
+                    setEtaData(data.data?.eta || []);
                 } catch (err) {
                     console.error("Error fetching GMB ETA:", err);
                     setEtaData([]);
@@ -1056,13 +1053,13 @@ function MtrSection({ toggleFavorite, isFavorite }) {
                             </div>
                         ) : (
                             <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1 scrollbar-thin">
-                                {filteredRoutes.map((routeObj, idx) => (
+                                {filteredRoutes.map((rCode) => (
                                     <button
-                                        key={routeObj.route_id || idx}
-                                        onClick={() => handleSelectRoute(routeObj)}
-                                        className={`px-3 py-1 rounded-lg text-xs font-bold transition border ${selectedRoute?.route_code === routeObj.route_code ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 dark:bg-slate-700/30 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'}`}
+                                        key={rCode}
+                                        onClick={() => handleSelectRoute(rCode)}
+                                        className={`px-3 py-1 rounded-lg text-xs font-bold transition border ${selectedRoute?.route_code === rCode ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 dark:bg-slate-700/30 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'}`}
                                     >
-                                        {routeObj.route_code}
+                                        {rCode}
                                     </button>
                                 ))}
                             </div>
@@ -1168,6 +1165,8 @@ function MtrSection({ toggleFavorite, isFavorite }) {
                 </div>
             );
         }
+
+        
 // Auto-refreshing Favorite Stop Card
         function FavoriteCard({ fav, toggleFavorite }) {
             const [etaList, setEtaList] = useState([]);
