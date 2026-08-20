@@ -1193,7 +1193,7 @@ function MtrSection({ toggleFavorite, isFavorite }) {
                             setEtaList([...up.slice(0, 1), ...down.slice(0, 1)]);
                         }
                     } else if (fav.type === 'GMB') {
-                        const res = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${fav.routeId}/1/${fav.stop.stop_seq}`);
+                        const res = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${fav.routeId}/1/${fav.stop_seq}`);
                         const data = await res.json();
                         setEtaList(data.data?.[0]?.eta ? data.data[0].eta.slice(0, 2) : []);
                     }
