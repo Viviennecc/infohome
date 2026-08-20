@@ -957,27 +957,40 @@ function MtrSection({ toggleFavorite, isFavorite }) {
             }, [routesList, searchCode]);
 
             // Select GMB Route
-            const handleSelectRoute = async (routeCode) => {
-                setLoadingStops(true);
-                setSelectedStop(null);
-                setEtaData([]);
-                try {
-                    const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${routeCode}`);
-                    const data = await res.json();
-                    const routeInfo = data.data?.[0];
-                    if (routeInfo) {
-                        setSelectedRoute(routeInfo);
-                        // Fetch stops for seq 1
-                        const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${routeInfo.route_id}/1`);
-                        const sData = await sRes.json();
-                        setRouteStops(sData.data?.route_stops || []);
-                    }
-                } catch (err) {
-                    console.error("Error fetching GMB stops:", err);
-                } finally {
-                    setLoadingStops(false);
-                }
-            };
+const handleSelectRoute = async (routeCode) => {
+    setLoadingStops(true);
+    setSelectedStop(null);
+    setEtaData([]);
+    
+    try {
+        // 1. Fetch main route information
+        const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${routeCode}`);
+        const data = await res.json();
+        const routeInfo = data.data?.[0];
+        
+        if (routeInfo) {
+            setSelectedRoute(routeInfo);
+            
+            // FIX 2: Dynamic fallback for sequence. 
+            // If the route has special variants, sequence 1 might not even be valid.
+            // We read the first available sequence id from the route instructions.
+            const directions = routeInfo.directions || [];
+            const activeSeq = directions[0]?.route_seq || 1; 
+            
+            // 2. Fetch stops for the chosen sequence
+            const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${routeInfo.route_id}/${activeSeq}`);
+            const sData = await sRes.json();
+            
+            // FIX 1: API property name must be 'route_stps', NOT 'route_stops'
+            setRouteStops(sData.data?.route_stps || []);
+        }
+    } catch (err) {
+        console.error("Error fetching GMB stops:", err);
+    } finally {
+        setLoadingStops(false);
+    }
+};
+
 
             // Fetch GMB Real-time ETA
             const fetchGmbEta = useCallback(async (stop) => {
