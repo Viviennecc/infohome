@@ -1206,7 +1206,7 @@
                                                     className="p-1.5 text-amber-500 hover:scale-110 transition"
                                                     title="加入最愛"
                                                 >
-                                                    <i className={`${isFavorite(`GMB-${selectedRoute.route_id}-${selectedStop.stop_seq}`) ? 'fa-solid' : 'fa-regular'} fa-star text-lg`}></i>
+                                                    <i className={`${isFavorite(`GMB-${selectedRoute.route_id}-${selectedStop.stopseq}`) ? 'fa-solid' : 'fa-regular'} fa-star text-lg`}></i>
                                                 </button>
                                                 <button
                                                     onClick={() => fetchGmbEta(selectedStop)}
