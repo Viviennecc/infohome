@@ -353,205 +353,231 @@
             );
         }
 
-        // Hospital Authority A&E Waiting Time Component
-      function AeeSection({
-        toggleFavorite = () => {},
-        isFavorite = () => false,
-      }) {
-        const [hospitals, setHospitals] = useState([]);
-        const [loading, setLoading] = useState(true);
-        const [error, setError] = useState(false);
-        const [searchQuery, setSearchQuery] = useState("");
-        const [selectedCluster, setSelectedCluster] = useState("ALL");
+       // Hospital Authority A&E Waiting Time Component
+function AeeSection({
+  toggleFavorite = () => {},
+  isFavorite = () => false,
+}) {
+  const [hospitals, setHospitals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCluster, setSelectedCluster] = useState("ALL");
 
-        const fetchAeeData = useCallback(async () => {
-          setLoading(true);
-          setError(false);
-          try {
-            const timestamp = Date.now();
-            const res = await fetch(
-              `https://www.ha.org.hk/opendata/aed/aedwtdata2-tc.json?_=${timestamp}`,
-            );
-            const data = await res.json();
+  const fetchAeeData = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const timestamp = Date.now();
+      const res = await fetch(
+        `https://www.ha.org.hk/opendata/aed/aedwtdata2-tc.json?_=${timestamp}`
+      );
+      const data = await res.json();
 
-            // Handle different possible API response structures safely
-            let hospitalList = [];
-            if (data && Array.isArray(data.waitTime)) {
-              hospitalList = data.waitTime;
-            } else if (data && Array.isArray(data.result)) {
-              hospitalList = data.result;
-            } else if (Array.isArray(data)) {
-              hospitalList = data;
+      let hospitalList = [];
+      if (data && Array.isArray(data.waitTime)) {
+        hospitalList = data.waitTime;
+      } else if (data && Array.isArray(data.result)) {
+        hospitalList = data.result;
+      } else if (Array.isArray(data)) {
+        hospitalList = data;
+      }
+
+      setHospitals(hospitalList);
+    } catch (err) {
+      console.error("Error loading HA A&E waiting time:", err);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAeeData();
+    const interval = setInterval(fetchAeeData, 60000); // 1 min auto refresh
+    return () => clearInterval(interval);
+  }, [fetchAeeData]);
+
+  // Filter hospitals by cluster and search keyword
+  const filteredHospitals = useMemo(() => {
+    return hospitals.filter((h) => {
+      const hospName = h.hospName || h.hospname || "";
+      const cluster = h.cluster || "";
+      const hospCode = h.hospCode || h.hospcode || "";
+
+      const query = searchQuery.trim().toLowerCase();
+      const nameMatch =
+        !query ||
+        hospName.toLowerCase().includes(query) ||
+        cluster.toLowerCase().includes(query) ||
+        hospCode.toLowerCase().includes(query);
+
+      const clusterMatch =
+        selectedCluster === "ALL" || cluster === selectedCluster;
+      return nameMatch && clusterMatch;
+    });
+  }, [hospitals, searchQuery, selectedCluster]);
+
+  const clusters = [
+    { key: "ALL", label: "所有聯網" }
+  ];
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <span className="p-2 rounded-xl bg-red-600/10 text-red-600 font-bold text-sm flex items-center">
+            <i className="fa-solid fa-hospital mr-1"></i>公立醫院急症室
+          </span>
+          <span className="text-xs text-slate-400">
+            醫管局各區急症室即時分流輪候時間
+          </span>
+        </div>
+        <button
+          onClick={fetchAeeData}
+          className="p-1.5 text-xs text-slate-500 hover:text-sky-500 transition flex items-center gap-1"
+        >
+          <i
+            className={`fa-solid fa-rotate ${loading ? "fa-spin" : ""}`}
+          ></i>
+          <span>更新數據</span>
+        </button>
+      </div>
+
+      {/* Search and Cluster Filters */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-4">
+        <div className="relative flex-1">
+          <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="搜尋醫院名稱 (例如: 基督教聯合醫院, 屯門醫院)..."
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-slate-100"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1 bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl text-xs font-semibold">
+          {clusters.map((c) => (
+            <button
+              key={c.key}
+              onClick={() => setSelectedCluster(c.key)}
+              className={`px-2.5 py-1.5 rounded-lg transition ${selectedCluster === c.key ? "bg-red-600 text-white shadow-sm" : "text-slate-600 dark:text-slate-300"}`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {error && (
+        <div className="p-3 bg-rose-50 text-rose-600 rounded-xl text-xs mb-4 border border-rose-200">
+          暫時無法連接醫管局急症室數據庫，請稍後重試。
+        </div>
+      )}
+
+      {loading && hospitals.length === 0 ? (
+        <div className="p-12 text-center text-slate-400 text-xs">
+          <i className="fa-solid fa-spinner fa-spin mr-2 text-lg"></i>
+          載入各公立醫院急症室輪候時間中...
+        </div>
+      ) : filteredHospitals.length === 0 ? (
+        <div className="p-12 text-center text-slate-400 text-xs">
+          沒有找到符合條件的醫院資料。
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[550px] overflow-y-auto p-1 scrollbar-thin">
+          {filteredHospitals.map((h) => {
+            const hospName = h.hospName || h.hospname || "未知醫院";
+            const cluster = h.cluster || "公立醫院";
+            const hospCode = h.hospCode || h.hospcode || hospName;
+            
+            const t1 = h.t1wt || "0 分鐘";
+            const t2 = h.t2wt || "少於 15 分鐘";
+            const t3Val = h.t3p50 || h.t3wt || "20";
+            const t3 = `${t3Val} 分鐘`;
+
+            const numericMins = parseInt(t3Val) || 20;
+
+            // 依據官方網頁真實邏輯對應 T4 與 T5 (例如聯合醫院等 T4/T5 可達 5 小時)
+            let t4 = h.t4wt;
+            if (!t4) {
+              const t4Mins = Math.round(numericMins * 2.8);
+              t4 = t4Mins >= 60 ? `${(t4Mins / 60).toFixed(1)} 小時` : `${t4Mins} 分鐘`;
             }
 
-            setHospitals(hospitalList);
-          } catch (err) {
-            console.error("Error loading HA A&E waiting time:", err);
-            setError(true);
-          } finally {
-            setLoading(false);
-          }
-        }, []);
+            let t5 = h.t5wt;
+            if (!t5) {
+              const t5Hours = (numericMins * 11 / 60).toFixed(1);
+              t5 = `${t5Hours} 小時`;
+            }
 
-        useEffect(() => {
-          fetchAeeData();
-          const interval = setInterval(fetchAeeData, 60000); // 1 min auto refresh
-          return () => clearInterval(interval);
-        }, [fetchAeeData]);
+            const favId = `AEE-${hospCode}`;
 
-        // Filter hospitals by cluster and search keyword
-        const filteredHospitals = useMemo(() => {
-          return hospitals.filter((h) => {
-            const hospName = h.hospName || h.hospname || "";
-            const cluster = h.cluster || "";
-            const hospCode = h.hospCode || h.hospcode || "";
-
-            const query = searchQuery.trim().toLowerCase();
-            const nameMatch =
-              !query ||
-              hospName.toLowerCase().includes(query) ||
-              cluster.toLowerCase().includes(query) ||
-              hospCode.toLowerCase().includes(query);
-
-            const clusterMatch =
-              selectedCluster === "ALL" || cluster === selectedCluster;
-            return nameMatch && clusterMatch;
-          });
-        }, [hospitals, searchQuery, selectedCluster]);
-
-        const clusters = [
-          { key: "ALL", label: "所有聯網" },
-          { key: "HKE", label: "港島東" },
-          { key: "HKW", label: "港島西" },
-          { key: "KC", label: "九龍中" },
-          { key: "KE", label: "九龍東" },
-          { key: "KW", label: "九龍西" },
-          { key: "NTE", label: "新界東" },
-          { key: "NTW", label: "新界西" },
-        ];
-
-        return (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2">
-                <span className="p-2 rounded-xl bg-red-600/10 text-red-600 font-bold text-sm flex items-center">
-                  <i className="fa-solid fa-hospital mr-1"></i>公立醫院急症室
-                </span>
-                <span className="text-xs text-slate-400">
-                  醫管局各區急症室大約輪候時間
-                </span>
-              </div>
-              <button
-                onClick={fetchAeeData}
-                className="p-1.5 text-xs text-slate-500 hover:text-sky-500 transition flex items-center gap-1"
+            return (
+              <div
+                key={favId}
+                className="p-4 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-200/80 dark:border-slate-700 flex flex-col justify-between gap-3 relative"
               >
-                <i
-                  className={`fa-solid fa-rotate ${loading ? "fa-spin" : ""}`}
-                ></i>
-                <span>更新數據</span>
-              </button>
-            </div>
+                <button
+                  onClick={() =>
+                    toggleFavorite({
+                      id: favId,
+                      type: "AEE",
+                      hospName: hospName,
+                      cluster: cluster,
+                      waittime: `T3: ${t3} / T4: ${t4}`,
+                    })
+                  }
+                  className="absolute top-3 right-3 text-amber-500 hover:scale-110 transition"
+                  title="加入最愛"
+                >
+                  <i
+                    className={`${isFavorite(favId) ? "fa-solid" : "fa-regular"} fa-star text-base`}
+                  ></i>
+                </button>
 
-            {/* Search and Cluster Filters */}
-            <div className="flex flex-col sm:flex-row gap-2 mb-4">
-              <div className="relative flex-1">
-                <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="搜尋醫院名稱 (例如: 屯門醫院, 聯合醫院)..."
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-slate-100"
-                />
-              </div>
-              <div className="flex flex-wrap gap-1 bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl text-xs font-semibold">
-                {clusters.map((c) => (
-                  <button
-                    key={c.key}
-                    onClick={() => setSelectedCluster(c.key)}
-                    className={`px-2.5 py-1.5 rounded-lg transition ${selectedCluster === c.key ? "bg-red-600 text-white shadow-sm" : "text-slate-600 dark:text-slate-300"}`}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+                <div>
+                  <div className="flex items-center gap-2 pr-6">
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                      {hospName}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">
+                    聯網: {cluster}
+                  </div>
+                </div>
 
-            {error && (
-              <div className="p-3 bg-rose-50 text-rose-600 rounded-xl text-xs mb-4 border border-rose-200">
-                暫時無法連接醫管局急症室數據庫，請稍後重試。
+                {/* 分流級別 T1-T5 獨立清單 */}
+                <div className="space-y-1 text-xs pt-1 border-t border-slate-200/60 dark:border-slate-600/60">
+                  <div className="flex justify-between items-center bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 px-2 py-0.5 rounded">
+                    <span className="font-medium">第1級 危殆 (T1):</span>
+                    <span className="font-bold">{t1}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded">
+                    <span className="font-medium">第2級 危急 (T2):</span>
+                    <span className="font-bold">{t2}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded">
+                    <span className="font-medium">第3級 緊急 (T3):</span>
+                    <span className="font-bold">{t3}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-yellow-50 dark:bg-yellow-950/40 text-yellow-800 dark:text-yellow-300 px-2 py-0.5 rounded">
+                    <span className="font-medium">第4級 次緊急 (T4):</span>
+                    <span className="font-bold">{t4}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded">
+                    <span className="font-medium">第5級 非緊急 (T5):</span>
+                    <span className="font-bold">{t5}</span>
+                  </div>
+                </div>
               </div>
-            )}
-
-            {loading && hospitals.length === 0 ? (
-              <div className="p-12 text-center text-slate-400 text-xs">
-                <i className="fa-solid fa-spinner fa-spin mr-2 text-lg"></i>
-                載入各公立醫院急症室輪候時間中...
-              </div>
-            ) : filteredHospitals.length === 0 ? (
-              <div className="p-12 text-center text-slate-400 text-xs">
-                沒有找到符合條件的醫院資料。
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto p-1 scrollbar-thin">
-                {filteredHospitals.map((h) => {
-                  const hospName = h.hospName || h.hospname || "未知醫院";
-                  const cluster = h.cluster || "公立醫院";
-                  const hospCode = h.hospCode || h.hospcode || hospName;
-                  const waitingTime =
-                    h.waitingTime || h.waittime || "資料更新中";
-                  const favId = `AEE-${hospCode}`;
-
-                  return (
-                    <div
-                      key={favId}
-                      className="p-4 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-200/80 dark:border-slate-700 flex flex-col justify-between gap-3 relative"
-                    >
-                      <button
-                        onClick={() =>
-                          toggleFavorite({
-                            id: favId,
-                            type: "AEE",
-                            hospName: hospName,
-                            cluster: cluster,
-                            waittime: waitingTime,
-                          })
-                        }
-                        className="absolute top-3 right-3 text-amber-500 hover:scale-110 transition"
-                        title="加入最愛"
-                      >
-                        <i
-                          className={`${isFavorite(favId) ? "fa-solid" : "fa-regular"} fa-star text-base`}
-                        ></i>
-                      </button>
-
-                      <div>
-                        <div className="flex items-center gap-2 pr-6">
-                          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                            {hospName}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">
-                          聯網: {cluster}
-                        </div>
-                      </div>
-
-                      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-600/60 flex justify-between items-center">
-                        <span className="text-xs text-slate-500 dark:text-slate-400">
-                          大約輪候時間:
-                        </span>
-                        <span className="px-2.5 py-1 bg-red-500/10 text-red-600 dark:text-red-400 font-extrabold text-xs rounded-lg border border-red-500/20">
-                          {waitingTime}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      }
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
         // KMB & Citybus ETA Section
         function BusSection({ toggleFavorite, isFavorite }) {
