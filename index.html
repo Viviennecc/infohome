@@ -1284,11 +1284,13 @@
                             const down = data.data[key].DOWN || [];
                             setEtaList([...up.slice(0, 1), ...down.slice(0, 1)]);
                         }
-                    } else if (fav.type === 'GMB') {
-                        const res = await fetch(`https://etagmb.gov.hk/eta/route-stop/${fav.routeId}/1/${fav.stopSeq}`);
-                        const data = await res.json();
-                        setEtaList(data.data?.[0]?.eta ? data.data[0].eta.slice(0, 2) : []);
-                    } else if (fav.type === 'AEE') {
+                    } else if (fav.type === "GMB") {
+              const res = await fetch(
+                `https://data.etagmb.gov.hk/eta/route-stop/${fav.routeId}/1/${fav.stopSeq}`,
+              );
+              const data = await res.json();
+              setEtaList(data.data?.eta ? data.data.eta.slice(0, 2) : []);
+            } else if (fav.type === 'AEE') {
                         const res = await fetch(`https://www.ha.org.hk/opendata/aed/aedwtdata2-tc.json`);
                         const data = await res.json();
                         const list = data.result || data;
