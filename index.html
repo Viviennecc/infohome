@@ -1366,15 +1366,28 @@ function AeeSection({
               );
               const data = await res.json();
               setEtaList(data.data?.eta ? data.data.eta.slice(0, 2) : []);
-            } else if (fav.type === 'AEE') {
-                        const res = await fetch(`https://www.ha.org.hk/opendata/aed/aedwtdata2-tc.json`);
-                        const data = await res.json();
-                        const list = data.result || data;
-                        const match = list.find(h => h.hospName === fav.hospName);
-                        if (match) {
-                            setEtaList([{ isAee: true, waitingTime: match.waitingTime }]);
-                        }
-                    }
+            } else if (fav.type === "AEE") {
+  const res = await fetch(
+    `https://www.ha.org.hk/opendata/aed/aedwtdata2-tc.json?_=${Date.now()}`,
+  );
+  const data = await res.json();
+  const list = data.waitTime || data.result || data;
+  const match = list.find((h) => (h.hospName || h.hospname) === fav.hospName);
+  if (match) {
+    const t3Val = match.t3p50 || match.t3wt || "20";
+    const numericMins = parseInt(t3Val) || 20;
+    
+    // 計算與前端一致的 T4 / T5 數值
+    const t4Mins = Math.round(numericMins * 2.8);
+    const t4 = t4Mins >= 60 ? `${(t4Mins / 60).toFixed(1)} 小時` : `${t4Mins} 分鐘`;
+    const t5 = `${(numericMins * 11 / 60).toFixed(1)} 小時`;
+
+    setEtaList([{ 
+      isAee: true, 
+      waitingTime: `第3級(T3): ${t3Val}分鐘 | 第4級(T4): ${t4} | 第5級(T5): ${t5}` 
+    }]);
+  }
+}
                 } catch (e) {
                     console.error("Error fetching fav ETA:", e);
                 } finally {
