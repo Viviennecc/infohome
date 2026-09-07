@@ -1389,6 +1389,8 @@ function AeeSection({
   const list = data.waitTime || data.result || data;
   const match = list.find((h) => (h.hospName || h.hospname) === fav.hospName);
   if (match) {
+    const t1 = h.t1wt || "0 分鐘";
+    const t2 = h.t2wt || "少於 15 分鐘";
     const t3Val = match.t3p50 || match.t3wt || "20";
     const numericMins = parseInt(t3Val) || 20;
     
@@ -1399,7 +1401,7 @@ function AeeSection({
 
     setEtaList([{ 
       isAee: true, 
-      waitingTime: `第3級(T3): ${t3Val}分鐘 | 第4級(T4): ${t4} | 第5級(T5): ${t5}` 
+      waitingTime: `第1級(T1): ${t1Val}分鐘 | 第2級(T2): ${t2Val}分鐘 | 第3級(T3): ${t3Val}分鐘 | 第4級(T4): ${t4} | 第5級(T5): ${t5}` 
     }]);
   }
 }
