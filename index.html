@@ -1523,6 +1523,41 @@ function AeeSection({
         </div>
     );
 }
+        function NYClock() {
+    const [timeStr, setTimeStr] = useState('');
+
+    useEffect(() => {
+        const updateClock = () => {
+            const now = new Date();
+            const formattedTime = now.toLocaleTimeString('en-US', {
+                timeZone: 'America/New_York',
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            const formattedDate = now.toLocaleDateString('en-US', {
+                timeZone: 'America/New_York',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+            setTimeStr(`${formattedDate} ${formattedTime}`);
+        };
+
+        updateClock();
+        const timer = setInterval(updateClock, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    return (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-700/60 rounded-xl text-[30px] font-mono font-semibold text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-600/80 shadow-inner">
+            <i className="fa-regular fa-clock text-sky-500"></i>
+            <span>{timeStr || '--/--/---- --:--:--'}</span>
+            <span className="text-xs px-1.5 py-0.5 bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded font-sans shrink-0">NYT</span>
+        </div>
+    );
+}
 
         // Main Root Application
         function App() {
@@ -1581,6 +1616,7 @@ function AeeSection({
                         <div className="flex items-center gap-2.5 self-end lg:self-auto flex-wrap">
                             <HKClock />
                             <UKClock />
+                            <NYClock />
                             <button
                                 onClick={toggleDarkMode}
                                 className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition shrink-0 text-[18px]"
