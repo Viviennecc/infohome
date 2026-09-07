@@ -1128,6 +1128,7 @@
                     <main className="p-4 space-y-4 flex-1">
                         {activeTab === 'WEATHER' && <WeatherSection />}
                         {activeTab === 'BUS' && <BusSection toggleFavorite={toggleFavorite} isFavorite={isFavorite} />}
+                        {activeTab === 'GMB' && <GmbSection toggleFavorite={toggleFavorite} isFavorite={isFavorite} />}
                         {activeTab === 'MTR' && <MtrSection toggleFavorite={toggleFavorite} isFavorite={isFavorite} />}
                         {activeTab === 'AEE' && <AeeSection toggleFavorite={toggleFavorite} isFavorite={isFavorite} />}
                         {activeTab === 'FAV' && <FavoritesSection favorites={favorites} toggleFavorite={toggleFavorite} />}
