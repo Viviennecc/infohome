@@ -494,105 +494,141 @@
             const [loadingStops, setLoadingStops] = useState(false);
             const [loadingEta, setLoadingEta] = useState(false);
 
-            useEffect(() => {
-                const fetchGmbRoutes = async () => {
-                    setLoadingRoutes(true);
-                    try {
-                        const res = await fetch(`https://data.etagmb.gov.hk/route/${region}`);
-                        const data = await res.json();
-                        const rawRoutes = data.data || [];
-                        const normalizedRoutes = rawRoutes.map(r => typeof r === 'object' && r !== null ? (r.route_code || '') : String(r));
-                        setRoutesList(normalizedRoutes.filter(Boolean));
-                    } catch (err) {
-                        console.error("Error loading GMB routes:", err);
-                        setRoutesList([]);
-                    } finally {
-                        setLoadingRoutes(false);
-                    }
-                };
-                fetchGmbRoutes();
-            }, [region]);
+           // 1. Fetch Region-Wide Routes List
+useEffect(() => {
+    const fetchGmbRoutes = async () => {
+        if (!region) return;
+        setLoadingRoutes(true);
+        try {
+            const res = await fetch(`https://data.etagmb.gov.hk/route/${region}`);
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            
+            const data = await res.json();
+            // FIX 1: HK GMB API payload structures the array under data.routes
+            const rawRoutes = data.data?.routes || [];
+            
+            const normalizedRoutes = rawRoutes.map(r => 
+                typeof r === 'object' && r !== null ? (r.route_code || '') : String(r)
+            );
+            setRoutesList(normalizedRoutes.filter(Boolean));
+        } catch (err) {
+            console.error("Error loading GMB routes:", err);
+            setRoutesList([]);
+        } finally {
+            setLoadingRoutes(false);
+        }
+    };
+    fetchGmbRoutes();
+}, [region]);
 
-            const filteredRoutes = useMemo(() => {
-                if (!searchCode.trim()) return routesList.slice(0, 30);
-                return routesList.filter(r => String(r).toUpperCase().includes(searchCode.trim().toUpperCase()));
-            }, [routesList, searchCode]);
+// 2. Client-side Search / Filtering Memo
+const filteredRoutes = useMemo(() => {
+    if (!searchCode.trim()) return routesList.slice(0, 30);
+    return routesList.filter(r => 
+        String(r).toUpperCase().includes(searchCode.trim().toUpperCase())
+    );
+}, [routesList, searchCode]);
 
-            const handleSelectRoute = async (routeCode) => {
-                setLoadingDirections(true);
-                setSelectedRoute(null);
-                setSelectedDirection(null);
-                setRouteDirections([]);
-                setSelectedStop(null);
-                setRouteStops([]);
-                setEtaData([]);
-                try {
-                    const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${routeCode}`);
-                    const data = await res.json();
-                    const directions = data.data || [];
-                    setRouteDirections(directions);
-                    if (directions.length > 0) {
-                        await handleSelectDirection(directions[0]);
-                    }
-                } catch (err) {
-                    console.error("Error fetching GMB route directions:", err);
-                } finally {
-                    setLoadingDirections(false);
-                }
-            };
+// 3. Select Route & Query Direction Variants
+const handleSelectRoute = async (routeCode) => {
+    setLoadingDirections(true);
+    // Reset all sub-dependent states clean
+    setSelectedRoute(null);
+    setSelectedDirection(null);
+    setRouteDirections([]);
+    setSelectedStop(null);
+    setRouteStops([]);
+    setEtaData([]);
+    
+    try {
+        const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${routeCode}`);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        
+        const data = await res.json();
+        const directions = data.data || [];
+        setRouteDirections(directions);
+        
+        if (directions.length > 0) {
+            // FIX 2: Store the overall target route info reference accurately
+            // instead of overwriting it inside handleSelectDirection
+            const initialDirection = directions[0];
+            await handleSelectDirection(initialDirection, initialDirection.route_id);
+        }
+    } catch (err) {
+        console.error("Error fetching GMB route directions:", err);
+    } finally {
+        setLoadingDirections(false);
+    }
+};
 
-            const handleSelectDirection = async (dirInfo) => {
-                setSelectedDirection(dirInfo);
-                setSelectedStop(null);
-                setEtaData([]);
-                setLoadingStops(true);
-                
-                try {
-                    const routeSeq = dirInfo.route_seq; 
-                    setSelectedRoute(dirInfo);
-                    
-                    const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${dirInfo.route_id}/${routeSeq}`);
-                    
-                    if (!sRes.ok) {
-                        throw new Error(`HTTP error! status: ${sRes.status}`);
-                    }
-                    
-                    const sData = await sRes.json();
-                    setRouteStops(sData.data || []);
-                } catch (err) {
-                    console.error("Error fetching GMB stops for direction:", err);
-                    setRouteStops([]);
-                } finally {
-                    setLoadingStops(false);
-                }
-            };
+// 4. Select Direction & Extract Specific Stop Sequences
+const handleSelectDirection = async (dirInfo, fallbackRouteId = null) => {
+    setSelectedDirection(dirInfo);
+    setSelectedStop(null);
+    setEtaData([]);
+    setLoadingStops(true);
+    
+    try {
+        const routeSeq = dirInfo.route_seq; 
+        const targetRouteId = dirInfo.route_id || fallbackRouteId;
+        
+        // Ensure state keeps context of what current ID we are bound to
+        setSelectedRoute({ route_id: targetRouteId });
+        
+        const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${targetRouteId}/${routeSeq}`);
+        if (!sRes.ok) throw new Error(`HTTP error! status: ${sRes.status}`);
+        
+        const sData = await sRes.json();
+        setRouteStops(sData.data || []);
+    } catch (err) {
+        console.error("Error fetching GMB stops for direction:", err);
+        setRouteStops([]);
+    } finally {
+        setLoadingStops(false);
+    }
+};
 
-            const fetchGmbEta = useCallback(async (stop) => {
-                if (!selectedRoute || !selectedDirection || !stop) return;
-                setSelectedStop(stop);
-                setLoadingEta(true);
-                try {
-                    const routeSeq = selectedDirection.route_seq;
-                    const res = await fetch(`https://data.etagmb.gov.hk/eta/${selectedRoute.route_id}/${stop.stop_seq}`);
-                    const data = await res.json();
-                    const list = data.data || [];
-                    const matchedEta = list.find(e => String(e.route_seq) === String(routeSeq));
-                    setEtaData(matchedEta?.eta || (list.length > 0 ? list[0].eta : []));
-                } catch (err) {
-                    console.error("Error fetching GMB ETA:", err);
-                    setEtaData([]);
-                } finally {
-                    setLoadingEta(false);
-                }
-            }, [selectedRoute, selectedDirection]);
+// 5. Fetch Real-time ETA Matrix
+const fetchGmbEta = useCallback(async (stop) => {
+    if (!selectedRoute?.route_id || !selectedDirection || !stop) return;
+    setSelectedStop(stop);
+    setLoadingEta(true);
+    
+    try {
+        const routeSeq = selectedDirection.route_seq;
+        // FIX 3: Dynamic path resolution uses route_id and sequential stop_seq
+        const res = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${selectedRoute.route_id}/${stop.stop_seq}`);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        
+        const data = await res.json();
+        const list = data.data || [];
+        
+        // Find matching arrival patterns tied specifically to direction sequential identifiers
+        const matchedEta = list.find(e => String(e.route_seq) === String(routeSeq));
+        setEtaData(matchedEta?.eta || (list.length > 0 ? list[0].eta : []));
+    } catch (err) {
+        console.error("Error fetching GMB ETA:", err);
+        setEtaData([]);
+    } finally {
+        setLoadingEta(false);
+    }
+}, [selectedRoute, selectedDirection]);
 
-            useEffect(() => {
-                if (!selectedStop) return;
-                const interval = setInterval(() => {
-                    fetchGmbEta(selectedStop);
-                }, 60000);
-                return () => clearInterval(interval);
-            }, [selectedStop, fetchGmbEta]);
+// 6. Polling effect hook for ongoing ETA lookups 
+useEffect(() => {
+    if (!selectedStop) return;
+    
+    // Immediate call on select step
+    fetchGmbEta(selectedStop);
+    
+    const interval = setInterval(() => {
+        fetchGmbRoutes(); // Keeping fetch operations scoped
+        fetchGmbEta(selectedStop);
+    }, 60000);
+    
+    return () => clearInterval(interval);
+}, [selectedStop, fetchGmbEta]);
+
 
             return (
                 <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80">
