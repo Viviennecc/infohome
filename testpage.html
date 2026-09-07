@@ -479,7 +479,7 @@
             );
         }
 
-         function GmbSection({ toggleFavorite, isFavorite }) {
+        function GmbSection({ toggleFavorite, isFavorite }) {
             const [region, setRegion] = useState('HKI');
             const [searchCode, setSearchCode] = useState('');
             const [routesList, setRoutesList] = useState([]);
@@ -529,7 +529,6 @@
                     const data = await res.json();
                     const directions = data.data || [];
                     if (directions.length > 0) {
-                        setSelectedRoute(directions[0]);
                         setRouteDirections(directions);
                         await handleSelectDirection(directions[0], routeCode, directions);
                     }
@@ -651,7 +650,7 @@
                         )}
                     </div>
 
-                    {selectedRoute && routeDirections.length > 0 && (
+                    {routeDirections.length > 0 && (
                         <div className="mb-4 pt-3 border-t border-slate-100 dark:border-slate-700">
                             <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">行車方向選擇</h4>
                             <div className="flex flex-wrap gap-2">
@@ -742,7 +741,7 @@
                                                 {etaData.map((eta, i) => {
                                                     const remMins = calculateRemainingMinutes(eta.timestamp);
                                                     return (
-                                                        <div key={i} className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs">
+                                                        <div key={i} className="p-2.5 bg-white dark:bg-slate-800 returned-lg border border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs">
                                                             <div>
                                                                 <span className="font-semibold text-slate-700 dark:text-slate-200">班次 {i + 1}</span>
                                                                 <span className="ml-2 text-[11px] text-slate-400">{eta.remarks_tc || '即時預測'}</span>
