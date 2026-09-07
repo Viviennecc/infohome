@@ -526,14 +526,13 @@
                 setSelectedStop(null);
                 setRouteStops([]);
                 setEtaData([]);
-                try const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${routeCode}`);
+                try {
+                    const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${routeCode}`);
                     const data = await res.json();
-                    const routeInfo = data.data?.[0];
-                    if (routeInfo) {
-                        setSelectedRoute(routeInfo);
-                        const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${routeInfo.route_id}/1`);
-                        const sData = await sRes.json();
-                        setRouteStops(sData.data?.route_stops || []);
+                    const directions = data.data || [];
+                    setRouteDirections(directions);
+                    if (directions.length > 0) {
+                        await handleSelectDirection(directions[0]);
                     }
                 } catch (err) {
                     console.error("Error fetching GMB route directions:", err);
@@ -779,6 +778,7 @@
                 </div>
             );
         }
+
 
 
 
