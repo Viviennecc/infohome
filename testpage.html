@@ -520,48 +520,61 @@
                 return routesList.filter(r => String(r).toUpperCase().includes(searchCode.trim().toUpperCase()));
             }, [routesList, searchCode]);
 
-            const handleSelectRoute = async (routeCode) => {
-                setLoadingDirections(true);
-                setSelectedRoute(null);
-                setSelectedDirection(null);
-                setRouteDirections([]);
-                setSelectedStop(null);
-                setRouteStops([]);
-                setEtaData([]);
-                try {
-                    const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${routeCode}`);
-                    const data = await res.json();
-                    const directions = data.data || [];
-                    if (directions.length > 0) {
-                        setRouteDirections(directions);
-                        await handleSelectDirection(directions[0], routeCode);
-                    }
-                } catch (err) {
-                    console.error("Error fetching GMB route directions:", err);
-                } finally {
-                    setLoadingDirections(false);
-                }
-            };
+            const handleSelectDirection = async (dirInfo, routeCode) => {
+    setSelectedDirection(dirInfo);
+    setSelectedStop(null);
+    setEtaData([]);
+    setLoadingStops(true);
+    
+    try {
+        const routeSeq = dirInfo.route_seq; 
+        setSelectedRoute(dirInfo);
+        
+        const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${dirInfo.route_id}/${routeSeq}`);
+        
+        if (!sRes.ok) {
+            throw new Error(`HTTP error! status: ${sRes.status}`);
+        }
+        
+        const sData = await sRes.json();
+        setRouteStops(sData.data || []);
+    } catch (err) {
+        console.error("Error fetching GMB stops for direction:", err);
+        setRouteStops([]);
+    } finally {
+        setLoadingStops(false);
+    }
+};
+
 
             const handleSelectDirection = async (dirInfo, routeCode) => {
-                setSelectedDirection(dirInfo);
-                setSelectedStop(null);
-                setEtaData([]);
-                setLoadingStops(true);
-                try {
-                    const bound = dirInfo.bound;
-                    setSelectedRoute(dirInfo);
-                    
-                    const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${dirInfo.route_id}/${bound}`);
-                    const sData = await sRes.json();
-                    setRouteStops(sData.data || []);
-                } catch (err) {
-                    console.error("Error fetching GMB stops for direction:", err);
-                    setRouteStops([]);
-                } finally {
-                    setLoadingStops(false);
-                }
-            };
+    setSelectedDirection(dirInfo);
+    setSelectedStop(null);
+    setEtaData([]);
+    setLoadingStops(true);
+    
+    try {
+        // FIX 1: HK GMB expects route sequence (e.g., 1 or 2) rather than a direction/bound string
+        const routeSeq = dirInfo.route_seq; 
+        setSelectedRoute(dirInfo);
+        
+        const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${dirInfo.route_id}/${routeSeq}`);
+        
+        // FIX 2: Guard against failed HTTP responses before processing the JSON string
+        if (!sRes.ok) {
+            throw new Error(`HTTP error! status: ${sRes.status}`);
+        }
+        
+        const sData = await sRes.json();
+        setRouteStops(sData.data || []);
+    } catch (err) {
+        console.error("Error fetching GMB stops for direction:", err);
+        setRouteStops([]);
+    } finally {
+        setLoadingStops(false);
+    }
+};
+
 
             const fetchGmbEta = useCallback(async (stop) => {
                 if (!selectedRoute || !selectedDirection || !stop) return;
