@@ -500,8 +500,11 @@
                     try {
                         const res = await fetch(`https://data.etagmb.gov.hk/route/${region}`);
                         const data = await res.json();
-                        // The endpoint returns data.data as an array of route code strings (e.g., ["1", "2", ...])
-                        setRoutesList(data.data || []);
+                        // The endpoint returns data.data as an array of route objects or route strings.
+                        // Standardizing to string route codes to prevent rendering/filtering crashes.
+                        const rawRoutes = data.data || [];
+                        const normalizedRoutes = rawRoutes.map(r => typeof r === 'object' && r !== null ? (r.route_code || '') : String(r));
+                        setRoutesList(normalizedRoutes.filter(Boolean));
                     } catch (err) {
                         console.error("Error loading GMB routes:", err);
                         setRoutesList([]);
@@ -531,7 +534,7 @@
                     const directions = data.data || [];
                     if (directions.length > 0) {
                         setRouteDirections(directions);
-                        await handleSelectDirection(directions[0], routeCode, directions);
+                        await handleSelectDirection(directions[0], routeCode);
                     }
                 } catch (err) {
                     console.error("Error fetching GMB route directions:", err);
@@ -541,14 +544,12 @@
             };
 
             const handleSelectDirection = async (dirInfo, routeCode) => {
-                const code = routeCode || selectedRoute?.route_code;
                 setSelectedDirection(dirInfo);
                 setSelectedStop(null);
                 setEtaData([]);
                 setLoadingStops(true);
                 try {
                     const bound = dirInfo.bound;
-                    // Keep the full route direction object as selectedRoute so route_id is available
                     setSelectedRoute(dirInfo);
                     
                     const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${dirInfo.route_id}/${bound}`);
@@ -570,7 +571,6 @@
                     const bound = selectedDirection.bound;
                     const res = await fetch(`https://data.etagmb.gov.hk/eta/${selectedRoute.route_id}/${stop.stop_seq}`);
                     const data = await res.json();
-                    // eta endpoint returns an array of items per bound/variant
                     const list = data.data || [];
                     const matchedEta = list.find(e => String(e.bound) === String(bound));
                     setEtaData(matchedEta?.eta || (list.length > 0 ? list[0].eta : []));
@@ -735,7 +735,7 @@
                                         {loadingEta ? (
                                             <div className="p-6 text-center text-slate-400 text-xs">
                                                 <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入班次中...
-                        </div>
+                                            </div>
                                         ) : etaData.length > 0 ? (
                                             <div className="space-y-2">
                                                 {etaData.map((eta, i) => {
