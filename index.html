@@ -1529,14 +1529,14 @@ function AeeSection({
     useEffect(() => {
         const updateClock = () => {
             const now = new Date();
-            const formattedTime = now.toLocaleTimeString('en-US', {
+            const formattedTime = now.toLocaleTimeString('en-GB', {
                 timeZone: 'America/New_York',
                 hour12: false,
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit'
             });
-            const formattedDate = now.toLocaleDateString('en-US', {
+            const formattedDate = now.toLocaleDateString('en-GB', {
                 timeZone: 'America/New_York',
                 year: 'numeric',
                 month: '2-digit',
