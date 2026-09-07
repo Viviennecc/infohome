@@ -173,185 +173,182 @@
 
         // HKO Weather Component
         function WeatherSection() {
-            const [weather, setWeather] = useState(null);
-            const [forecast, setForecast] = useState([]);
-            const [warnings, setWarnings] = useState([]);
-            const [loading, setLoading] = useState(true);
-            const [error, setError] = useState(false);
-            const [selectedDistrict, setSelectedDistrict] = useState('將軍澳');
-            const [districtSearch, setDistrictSearch] = useState('');
+        const [weather, setWeather] = useState(null);
+        const [forecast, setForecast] = useState([]);
+        const [warnings, setWarnings] = useState([]);
+        const [loading, setLoading] = useState(true);
+        const [error, setError] = useState(false);
+        const [selectedDistrict, setSelectedDistrict] = useState(null);
+        const [districtSearch, setDistrictSearch] = useState('');
 
-            const fetchWeatherData = useCallback(async () => {
-                setLoading(true);
-                setError(false);
-                try {
-                    const timestamp = Date.now();
-                    const rhrRes = await fetch(`https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc&_=${timestamp}`);
-                    const rhrData = await rhrRes.json();
-                    
-                    const fndRes = await fetch(`https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=fnd&lang=tc&_=${timestamp}`);
-                    const fndData = await fndRes.json();
+        const fetchWeatherData = useCallback(async () => {
+          setLoading(true);
+          setError(false);
+          try {
+            const timestamp = Date.now();
+            const rhrRes = await fetch(`https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc&_=${timestamp}`);
+            const rhrData = await rhrRes.json();
 
-                    const warnRes = await fetch(`https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warnsum&lang=tc&_=${timestamp}`);
-                    const warnData = await warnRes.json();
+            const fndRes = await fetch(`https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=fnd&lang=tc&_=${timestamp}`);
+            const fndData = await fndRes.json();
 
-                    setWeather(rhrData);
-                    setForecast(fndData.weatherForecast || []);
-                    
-                    if (warnData && Object.keys(warnData).length > 0) {
-                        const warnList = Object.values(warnData).map(w => w.name).filter(Boolean);
-                        setWarnings(warnList);
-                    } else {
-                        setWarnings([]);
-                    }
-                } catch (err) {
-                    console.error("Error loading weather data:", err);
-                    setError(true);
-                } finally {
-                    setLoading(false);
-                }
-            }, []);
+            const warnRes = await fetch(`https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warnsum&lang=tc&_=${timestamp}`);
+            const warnData = await warnRes.json();
 
-            useEffect(() => {
-                fetchWeatherData();
-                const interval = setInterval(fetchWeatherData, 60000);
-                return () => clearInterval(interval);
-            }, [fetchWeatherData]);
+            setWeather(rhrData);
+            setForecast(fndData.weatherForecast || []);
 
-            if (loading && !weather) {
-                return (
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-700/80 animate-pulse flex justify-center items-center min-h-[160px]">
-                        <div className="text-slate-400 flex items-center gap-2">
-                            <i className="fa-solid fa-spinner fa-spin text-xl"></i>
-                            <span>正直接連線至香港天文台資料庫載入天氣報告...</span>
-                        </div>
-                    </div>
-                );
+            if (warnData && Object.keys(warnData).length > 0) {
+              const warnList = Object.values(warnData).map(w => w.name).filter(Boolean);
+              setWarnings(warnList);
+            } else {
+              setWarnings([]);
             }
+          } catch (err) {
+            console.error("Error loading weather data:", err);
+            setError(true);
+          } finally {
+            setLoading(false);
+          }
+        }, []);
 
-            if (error && !weather) {
-                return (
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-rose-200 dark:border-rose-900/50 text-center">
-                        <p className="text-rose-500 font-semibold mb-2"><i className="fa-solid fa-triangle-exclamation mr-2"></i>無法直接連結香港天文台資料庫</p>
-                        <button onClick={fetchWeatherData} className="px-3 py-1 bg-rose-500 text-white rounded-lg text-sm hover:bg-rose-600 transition">重新嘗試連線</button>
-                    </div>
-                );
-            }
+        useEffect(() => {
+          fetchWeatherData();
+          const interval = setInterval(fetchWeatherData, 60000);
+          return () => clearInterval(interval);
+        }, [fetchWeatherData]);
 
-            const districtList = weather?.temperature?.data || [];
-            const activeDistrictData = districtList.find(d => d.place.includes(selectedDistrict)) 
-                || districtList.find(d => d.place.includes('將軍澳')) 
-                || districtList[0];
-            const displayTemp = activeDistrictData?.value;
-            const displayPlace = activeDistrictData?.place || '將軍澳';
-
-            const humidity = weather?.humidity?.data?.[0]?.value;
-            const uvIndex = weather?.uvindex?.data?.[0]?.value;
-
-            const filteredDistricts = districtList.filter(place => 
-                !districtSearch.trim() || place.place.toLowerCase().includes(districtSearch.trim().toLowerCase())
-            );
-
-            return (
-                <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/80 transition-all">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-100 dark:border-slate-700">
-                        <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-[30px] shrink-0">
-                                <i className="fa-solid fa-sun-plant-wilt"></i>
-                            </div>
-                            <div>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-[30px] font-extrabold text-slate-800 dark:text-slate-100 leading-none">{formatNumberDecimal(displayTemp)}°C</span>
-                                    <span className="px-2.5 py-0.5 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold text-xs border border-sky-500/20">
-                                        <i className="fa-solid fa-location-dot mr-1"></i>{displayPlace}
-                                    </span>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                    <span><i className="fa-solid fa-droplet text-sky-500 mr-1"></i>相對濕度: <strong className="text-slate-700 dark:text-slate-200">{formatNumberDecimal(humidity)}%</strong></span>
-                                    {uvIndex !== undefined && uvIndex !== null && (
-                                        <span><i className="fa-solid fa-sun text-amber-500 mr-1"></i>UV指數: <strong className="text-slate-700 dark:text-slate-200">{formatNumberDecimal(uvIndex)}</strong></span>
-                                    )}
-                                    <span className="text-slate-400">天文台直連報告時間: {weather?.updateTime ? weather.updateTime.substring(11, 16) : '--:--'}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {warnings.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                                {warnings.map((warn, i) => (
-                                    <span key={i} className="px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold text-xs border border-rose-500/20 flex items-center gap-1.5 animate-pulse">
-                                        <i className="fa-solid fa-triangle-exclamation"></i>
-                                        {warn}
-                                    </span>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                                <i className="fa-solid fa-shield-halved mr-1.5"></i>現時無特別天氣警告
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="mt-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
-                            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                全港各區最新氣溫（完整列表 • 點擊切換顯示地區）
-                            </h3>
-                            <div className="relative w-full sm:w-48">
-                                <input
-                                    type="text"
-                                    value={districtSearch}
-                                    onChange={(e) => setDistrictSearch(e.target.value)}
-                                    placeholder="搜尋地區 (如: 將軍澳)..."
-                                    className="w-full px-2.5 py-1 text-xs bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500 dark:text-slate-100"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 text-xs max-h-64 overflow-y-auto p-1 scrollbar-thin">
-                            {filteredDistricts.map((place, idx) => {
-                                const isSelected = displayPlace === place.place;
-                                return (
-                                    <button
-                                        key={idx}
-                                        onClick={() => setSelectedDistrict(place.place)}
-                                        className={`p-2 rounded-xl flex justify-between items-center text-left border transition ${
-                                            isSelected
-                                                ? 'bg-sky-600 text-white border-sky-600 shadow-sm font-bold ring-2 ring-sky-300 dark:ring-sky-700'
-                                                : 'bg-slate-50 dark:bg-slate-700/50 border-slate-100 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
-                                        }`}
-                                    >
-                                        <span className="truncate mr-1">{place.place}</span>
-                                        <span className={`shrink-0 ${isSelected ? 'text-white font-black' : 'font-bold text-slate-800 dark:text-slate-100'}`}>
-                                            {formatNumberDecimal(place.value)}°C
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700">
-                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">九天天氣預報</h3>
-                        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
-                            {forecast.slice(0, 7).map((f, idx) => (
-                                <div key={idx} className="min-w-[100px] flex-1 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/30 text-center border border-slate-100 dark:border-slate-700/50 shrink-0">
-                                    <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                                        {f.forecastDate ? `${f.forecastDate.substring(4, 6)}/${f.forecastDate.substring(6, 8)}` : ''} ({f.week?.replace('星期', '週')})
-                                    </div>
-                                    <div className="text-sm font-bold text-slate-800 dark:text-slate-100 my-1">
-                                        {formatNumberDecimal(f.forecastMintemp?.value)}° - {formatNumberDecimal(f.forecastMaxtemp?.value)}°C
-                                    </div>
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1" title={f.forecastWeather}>
-                                        {f.forecastWeather}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            );
+        if (loading && !weather) {
+          return (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200/80 dark:border-slate-700/80 animate-pulse flex justify-center items-center min-h-[160px]">
+              <div className="text-slate-400 flex items-center gap-2 text-xs">
+                <i className="fa-solid fa-spinner fa-spin text-base text-sky-500"></i>
+                <span>正直接連線至香港天文台資料庫載入天氣報告...</span>
+              </div>
+            </div>
+          );
         }
+
+        if (error && !weather) {
+          return (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-rose-200 dark:border-rose-900/50 text-center">
+              <p className="text-rose-500 font-semibold mb-2 text-xs"><i className="fa-solid fa-triangle-exclamation mr-1.5"></i>無法直接連結香港天文台資料庫</p>
+              <button type="button" onClick={fetchWeatherData} className="px-3 py-1 bg-rose-500 text-white rounded-lg text-xs hover:bg-rose-600 transition">重新嘗試連線</button>
+            </div>
+          );
+        }
+
+        const districtList = weather?.temperature?.data || [];
+        const activeDistrictData = (selectedDistrict && districtList.find(d => d.place.includes(selectedDistrict)))
+          || districtList[0];
+        const displayTemp = activeDistrictData?.value;
+        const displayPlace = activeDistrictData?.place || '香港天文台';
+
+        const humidity = weather?.humidity?.data?.[0]?.value;
+        const uvIndex = weather?.uvindex?.data?.[0]?.value;
+
+        const filteredDistricts = districtList.filter(place =>
+          !districtSearch.trim() || place.place.toLowerCase().includes(districtSearch.trim().toLowerCase())
+        );
+
+        return (
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-700/80 transition-all space-y-4">
+            <div className="flex flex-col justify-between items-start gap-3 pb-3 border-b border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-2xl shrink-0">
+                  <i className="fa-solid fa-sun"></i>
+                </div>
+                <div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-black text-slate-800 dark:text-slate-100 leading-none">{formatNumberDecimal(displayTemp)}°C</span>
+                    <span className="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold text-xs border border-sky-500/20">
+                      <i className="fa-solid fa-location-dot mr-1"></i>{displayPlace}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    <span><i className="fa-solid fa-droplet text-sky-500 mr-1"></i>濕度: <strong className="text-slate-700 dark:text-slate-200">{formatNumberDecimal(humidity)}%</strong></span>
+                    {uvIndex !== undefined && uvIndex !== null && (
+                      <span><i className="fa-solid fa-sun text-amber-500 mr-1"></i>UV: <strong className="text-slate-700 dark:text-slate-200">{formatNumberDecimal(uvIndex)}</strong></span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {warnings.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5 w-full">
+                  {warnings.map((warn, i) => (
+                    <span key={i} className="px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold text-xs border border-rose-500/20 flex items-center gap-1.5 animate-pulse">
+                      <i className="fa-solid fa-triangle-exclamation text-xs"></i>
+                      {warn}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                  <i className="fa-solid fa-shield-halved mr-1"></i>現時無特別天氣警告
+                </div>
+              )}
+            </div>
+
+            {/* Regional Temperature Grid */}
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">全港各區氣溫</h3>
+                <div className="relative w-36">
+                  <input
+                    type="text"
+                    value={districtSearch}
+                    onChange={(e) => setDistrictSearch(e.target.value)}
+                    placeholder="搜尋地區..."
+                    className="w-full px-2 py-0.5 text-xs bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500 dark:text-slate-100"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 max-h-48 overflow-y-auto p-1 scrollbar-thin">
+                {filteredDistricts.map((place, idx) => {
+                  const isSelected = displayPlace === place.place;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedDistrict(place.place)}
+                      className={`p-1.5 rounded-lg flex flex-col justify-between items-center text-center border transition ${
+                        isSelected
+                          ? 'bg-sky-600 text-white border-sky-600 shadow-sm font-bold'
+                          : 'bg-slate-50 dark:bg-slate-700/30 border-slate-100 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      <span className="truncate w-full text-[10px] leading-tight">{place.place}</span>
+                      <span className="text-xs font-bold mt-0.5">{formatNumberDecimal(place.value)}°C</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 9-Day Weather Forecast */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">九天天氣預報</h3>
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                {forecast.slice(0, 7).map((f, idx) => (
+                  <div key={idx} className="min-w-[90px] p-2 rounded-xl bg-slate-50 dark:bg-slate-700/30 text-center border border-slate-100 dark:border-slate-700/50 shrink-0">
+                    <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                      {f.forecastDate ? `${f.forecastDate.substring(4, 6)}/${f.forecastDate.substring(6, 8)}` : ''} ({f.week?.replace('星期', '週')})
+                    </div>
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-100 my-1">
+                      {formatNumberDecimal(f.forecastMintemp?.value)}°-{formatNumberDecimal(f.forecastMaxtemp?.value)}°
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate" title={f.forecastWeather}>
+                      {f.forecastWeather}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
 
        // Hospital Authority A&E Waiting Time Component
 function AeeSection({
