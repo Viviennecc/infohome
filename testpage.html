@@ -531,8 +531,7 @@
                     if (directions.length > 0) {
                         setSelectedRoute({ route_code: routeCode });
                         setRouteDirections(directions);
-                        // Automatically select the first direction
-                        handleSelectDirection(directions[0], routeCode, directions);
+                        await handleSelectDirection(directions[0], routeCode, directions);
                     }
                 } catch (err) {
                     console.error("Error fetching GMB route directions:", err);
@@ -549,7 +548,6 @@
                 setLoadingStops(true);
                 try {
                     const bound = dirInfo.bound;
-                    // Fetch full route info to get the correct route_id for this bound
                     const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${code}`);
                     const data = await res.json();
                     const matchedRoute = (data.data || []).find(d => String(d.bound) === String(bound));
