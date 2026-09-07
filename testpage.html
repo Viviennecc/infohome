@@ -484,10 +484,13 @@
             const [searchCode, setSearchCode] = useState('');
             const [routesList, setRoutesList] = useState([]);
             const [selectedRoute, setSelectedRoute] = useState(null);
+            const [routeDirections, setRouteDirections] = useState([]);
+            const [selectedDirection, setSelectedDirection] = useState(null);
             const [routeStops, setRouteStops] = useState([]);
             const [selectedStop, setSelectedStop] = useState(null);
             const [etaData, setEtaData] = useState([]);
             const [loadingRoutes, setLoadingRoutes] = useState(false);
+            const [loadingDirections, setLoadingDirections] = useState(false);
             const [loadingStops, setLoadingStops] = useState(false);
             const [loadingEta, setLoadingEta] = useState(false);
 
@@ -514,32 +517,63 @@
             }, [routesList, searchCode]);
 
             const handleSelectRoute = async (routeCode) => {
-                setLoadingStops(true);
+                setLoadingDirections(true);
+                setSelectedRoute(null);
+                setSelectedDirection(null);
+                setRouteDirections([]);
                 setSelectedStop(null);
+                setRouteStops([]);
                 setEtaData([]);
                 try {
                     const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${routeCode}`);
                     const data = await res.json();
-                    const routeInfo = data.data?.[0];
-                    if (routeInfo) {
-                        setSelectedRoute(routeInfo);
-                        const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${routeInfo.route_id}/1`);
+                    const directions = data.data || [];
+                    if (directions.length > 0) {
+                        setSelectedRoute({ route_code: routeCode });
+                        setRouteDirections(directions);
+                        // Automatically select the first direction
+                        handleSelectDirection(directions[0], routeCode, directions);
+                    }
+                } catch (err) {
+                    console.error("Error fetching GMB route directions:", err);
+                } finally {
+                    setLoadingDirections(false);
+                }
+            };
+
+            const handleSelectDirection = async (dirInfo, routeCode, allDirections = routeDirections) => {
+                const code = routeCode || selectedRoute?.route_code;
+                setSelectedDirection(dirInfo);
+                setSelectedStop(null);
+                setEtaData([]);
+                setLoadingStops(true);
+                try {
+                    const bound = dirInfo.bound;
+                    // Fetch full route info to get the correct route_id for this bound
+                    const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${code}`);
+                    const data = await res.json();
+                    const matchedRoute = (data.data || []).find(d => String(d.bound) === String(bound));
+                    
+                    if (matchedRoute) {
+                        setSelectedRoute(matchedRoute);
+                        const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${matchedRoute.route_id}/${bound}`);
                         const sData = await sRes.json();
                         setRouteStops(sData.data?.route_stops || []);
                     }
                 } catch (err) {
-                    console.error("Error fetching GMB stops:", err);
+                    console.error("Error fetching GMB stops for direction:", err);
                 } finally {
                     setLoadingStops(false);
                 }
             };
 
             const fetchGmbEta = useCallback(async (stop) => {
-                if (!selectedRoute || !stop) return;
+                if (!selectedRoute || !selectedDirection || !stop) return;
                 setSelectedStop(stop);
                 setLoadingEta(true);
                 try {
-                    const res = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${selectedRoute.route_id}/1/${stop.stop_seq}`);
+                    const bound = selectedDirection.bound;
+                    const res = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${selectedRoute.route_id}/${bound}/${stop.stop_seq}`);
                     const data = await res.json();
                     setEtaData(data.data?.eta || []);
                 } catch (err) {
@@ -548,7 +582,7 @@
                 } finally {
                     setLoadingEta(false);
                 }
-            }, [selectedRoute]);
+            }, [selectedRoute, selectedDirection]);
 
             useEffect(() => {
                 if (!selectedStop) return;
@@ -576,7 +610,8 @@
                             ].map((reg) => (
                                 <button
                                     key={reg.key}
-                                    onClick={() => { setRegion(reg.key); setSelectedRoute(null); setSelectedStop(null); }}
+                                    type="button"
+                                    onClick={() => { setRegion(reg.key); setSelectedRoute(null); setSelectedDirection(null); setSelectedStop(null); setRouteDirections([]); setRouteStops([]); }}
                                     className={`px-3 py-1.5 rounded-lg transition ${region === reg.key ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}
                                 >
                                     {reg.label}
@@ -606,6 +641,7 @@
                                 {filteredRoutes.map((rCode) => (
                                     <button
                                         key={rCode}
+                                        type="button"
                                         onClick={() => handleSelectRoute(rCode)}
                                         className={`px-3 py-1 rounded-lg text-xs font-bold transition border ${selectedRoute?.route_code === rCode ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 dark:bg-slate-700/30 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'}`}
                                     >
@@ -615,6 +651,31 @@
                             </div>
                         )}
                     </div>
+
+                    {selectedRoute && routeDirections.length > 0 && (
+                        <div className="mb-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+                            <h4 className="text-xs font-semibold text-slate-400 uppercase mb-2">行車方向選擇</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {routeDirections.map((dir, idx) => {
+                                    const isSelectedDir = selectedDirection?.bound === dir.bound;
+                                    return (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => handleSelectDirection(dir)}
+                                            className={`px-3 py-2 rounded-xl text-xs transition border flex-1 min-w-[140px] text-left ${
+                                                isSelectedDir
+                                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm font-bold'
+                                                    : 'bg-slate-50 dark:bg-slate-700/30 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                                            }`}
+                                        >
+                                            <div className="font-bold truncate">方向 {dir.bound}: {dir.orig_tc} → {dir.dest_tc}</div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
 
                     {selectedRoute && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100 dark:border-slate-700">
@@ -629,6 +690,7 @@
                                         {routeStops.map((stop) => (
                                             <button
                                                 key={stop.stop_seq}
+                                                type="button"
                                                 onClick={() => fetchGmbEta(stop)}
                                                 className={`w-full p-2.5 rounded-xl text-left text-xs transition flex justify-between items-center border ${selectedStop?.stop_seq === stop.stop_seq ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 text-emerald-700 dark:text-emerald-300 font-semibold' : 'bg-slate-50 dark:bg-slate-700/30 border-slate-100 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                                             >
@@ -648,6 +710,7 @@
                                             <span className="font-bold text-sm text-slate-800 dark:text-slate-100">{selectedStop.name_tc}</span>
                                             <div className="flex items-center gap-2">
                                                 <button
+                                                    type="button"
                                                     onClick={() => toggleFavorite({
                                                         id: `GMB-${selectedRoute.route_id}-${selectedStop.stop_seq}`,
                                                         type: 'GMB',
@@ -659,9 +722,10 @@
                                                     className="p-1.5 text-amber-500 hover:scale-110 transition"
                                                     title="加入最愛"
                                                 >
-                                                    <i className={`${isFavorite(`GMB-${selectedRoute.route_id}-${selectedStop.stopseq}`) ? 'fa-solid' : 'fa-regular'} fa-star text-lg`}></i>
+                                                    <i className={`${isFavorite(`GMB-${selectedRoute.route_id}-${selectedStop.stop_seq}`) ? 'fa-solid' : 'fa-regular'} fa-star text-lg`}></i>
                                                 </button>
                                                 <button
+                                                    type="button"
                                                     onClick={() => fetchGmbEta(selectedStop)}
                                                     className="p-1.5 text-slate-500 hover:text-emerald-500 transition"
                                                 >
