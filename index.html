@@ -1387,11 +1387,16 @@ function AeeSection({
   );
   const data = await res.json();
   const list = data.waitTime || data.result || data;
+  
+  // Find the correct hospital match
   const match = list.find((h) => (h.hospName || h.hospname) === fav.hospName);
+  
   if (match) {
-    const t1 = h.t1wt || "0 分鐘";
-    const t2 = h.t2wt || "少於 15 分鐘";
+    // FIX 1: Changed 'h' to 'match'
+    const t1Val = match.t1wt || "0"; 
+    const t2Val = match.t2wt || "少於 15";
     const t3Val = match.t3p50 || match.t3wt || "20";
+    
     const numericMins = parseInt(t3Val) || 20;
     
     // 計算與前端一致的 T4 / T5 數值
@@ -1399,6 +1404,7 @@ function AeeSection({
     const t4 = t4Mins >= 60 ? `${(t4Mins / 60).toFixed(1)} 小時` : `${t4Mins} 分鐘`;
     const t5 = `${(numericMins * 11 / 60).toFixed(1)} 小時`;
 
+    // FIX 2: Used the correct t1Val and t2Val variables here
     setEtaList([{ 
       isAee: true, 
       waitingTime: `第1級(T1): ${t1Val}分鐘 | 第2級(T2): ${t2Val}分鐘 | 第3級(T3): ${t3Val}分鐘 | 第4級(T4): ${t4} | 第5級(T5): ${t5}` 
