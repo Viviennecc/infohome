@@ -500,7 +500,7 @@
                     try {
                         const res = await fetch(`https://data.etagmb.gov.hk/route/${region}`);
                         const data = await res.json();
-                        setRoutesList(data.data?.routes || []);
+                        setRoutesList(data.data || []);
                     } catch (err) {
                         console.error("Error loading GMB routes:", err);
                         setRoutesList([]);
@@ -513,7 +513,7 @@
 
             const filteredRoutes = useMemo(() => {
                 if (!searchCode.trim()) return routesList.slice(0, 30);
-                return routesList.filter(r => r.toUpperCase().includes(searchCode.trim().toUpperCase()));
+                return routesList.filter(r => String(r).toUpperCase().includes(searchCode.trim().toUpperCase()));
             }, [routesList, searchCode]);
 
             const handleSelectRoute = async (routeCode) => {
@@ -529,7 +529,7 @@
                     const data = await res.json();
                     const directions = data.data || [];
                     if (directions.length > 0) {
-                        setSelectedRoute({ route_code: routeCode });
+                        setSelectedRoute(directions[0]);
                         setRouteDirections(directions);
                         await handleSelectDirection(directions[0], routeCode, directions);
                     }
@@ -556,7 +556,7 @@
                         setSelectedRoute(matchedRoute);
                         const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${matchedRoute.route_id}/${bound}`);
                         const sData = await sRes.json();
-                        setRouteStops(sData.data?.route_stops || []);
+                        setRouteStops(sData.data || []);
                     }
                 } catch (err) {
                     console.error("Error fetching GMB stops for direction:", err);
@@ -571,9 +571,10 @@
                 setLoadingEta(true);
                 try {
                     const bound = selectedDirection.bound;
-                    const res = await fetch(`https://data.etagmb.gov.hk/eta/route-stop/${selectedRoute.route_id}/${bound}/${stop.stop_seq}`);
+                    const res = await fetch(`https://data.etagmb.gov.hk/eta/${selectedRoute.route_id}/${stop.stop_seq}`);
                     const data = await res.json();
-                    setEtaData(data.data?.eta || []);
+                    const matchedEta = (data.data || []).find(e => String(e.bound) === String(bound));
+                    setEtaData(matchedEta?.eta || []);
                 } catch (err) {
                     console.error("Error fetching GMB ETA:", err);
                     setEtaData([]);
@@ -774,6 +775,7 @@
                 </div>
             );
         }
+
 
         function AeeSection({
   toggleFavorite = () => {},
