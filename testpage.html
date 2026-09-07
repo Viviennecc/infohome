@@ -1526,39 +1526,128 @@
         );
       }
 
-      function FavoritesSection({ favorites, toggleFavorite }) {
-        if (favorites.length === 0) {
-          return (
-            <div className="p-8 text-center text-slate-400 text-xs bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-              <i className="fa-regular fa-star text-2xl mb-2 block text-amber-400"></i>
-              尚未加入任何最愛項目。請在各功能頁面點擊星號按鈕加入！
-            </div>
-          );
-        }
-        return (
-          <div className="space-y-2.5">
-            <h3 className="text-xs font-bold text-slate-400 uppercase">我的最愛收藏 ({favorites.length})</h3>
-            <div className="space-y-1.5 max-h-[500px] overflow-y-auto pr-0.5 scrollbar-thin">
-              {favorites.map(fav => (
-                <div key={fav.id} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center text-xs">
-                  <div>
-                    <div className="font-bold text-slate-800 dark:text-slate-100">
-                      {fav.stopName || fav.stationName || fav.hospName}
+     function FavoriteCard({ fav, toggleFavorite }) {
+            const [etaList, setEtaList] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            const fetchFavEta = useCallback(async () => {
+                setLoading(true);
+                try {
+                    if (fav.type === 'BUS') {
+                        let url = fav.company === 'KMB'
+                            ? `https://data.etabus.gov.hk/v1/transport/kmb/eta/${fav.stopId}/${fav.route}/1`
+                            : `https://rt.data.gov.hk/v1/transport/citybus-nwfb/eta/ctb/${fav.stopId}/${fav.route}`;
+                        const res = await fetch(url);
+                        const data = await res.json();
+                        setEtaList(data.data ? data.data.filter(i => i.eta).slice(0, 2) : []);
+                    } else if (fav.type === 'MTR') {
+                        const res = await fetch(`https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=${fav.line}&sta=${fav.stationCode}&lang=TC`);
+                        const data = await res.json();
+                        const key = `${fav.line}-${fav.stationCode}`;
+                        if (data.status === 1 && data.data && data.data[key]) {
+                            const up = data.data[key].UP || [];
+                            const down = data.data[key].DOWN || [];
+                            setEtaList([...up.slice(0, 1), ...down.slice(0, 1)]);
+                        }
+                    } else if (fav.type === "GMB") {
+              const res = await fetch(
+                `https://data.etagmb.gov.hk/eta/route-stop/${fav.routeId}/1/${fav.stopSeq}`,
+              );
+              const data = await res.json();
+              setEtaList(data.data?.eta ? data.data.eta.slice(0, 2) : []);
+            } else if (fav.type === "AEE") {
+  const res = await fetch(
+    `https://www.ha.org.hk/opendata/aed/aedwtdata2-tc.json?_=${Date.now()}`,
+  );
+  const data = await res.json();
+  const list = data.waitTime || data.result || data;
+  
+  // Find the correct hospital match
+  const match = list.find((h) => (h.hospName || h.hospname) === fav.hospName);
+  
+  if (match) {
+    // FIX 1: Changed 'h' to 'match'
+    const t1Val = match.t1wt || "0"; 
+    const t2Val = match.t2wt || "少於 15";
+    const t3Val = match.t3p50 || match.t3wt || "20";
+    
+    const numericMins = parseInt(t3Val) || 20;
+    
+    // 計算與前端一致的 T4 / T5 數值
+    const t4Mins = Math.round(numericMins * 2.8);
+    const t4 = t4Mins >= 60 ? `${(t4Mins / 60).toFixed(1)} 小時` : `${t4Mins} 分鐘`;
+    const t5 = `${(numericMins * 11 / 60).toFixed(1)} 小時`;
+
+    // FIX 2: Used the correct t1Val and t2Val variables here
+    setEtaList([{ 
+      isAee: true, 
+      waitingTime: `第1級(T1): ${t1Val}分鐘 | 第2級(T2): ${t2Val}分鐘 | 第3級(T3): ${t3Val}分鐘 | 第4級(T4): ${t4} | 第5級(T5): ${t5}` 
+    }]);
+  }
+}
+                } catch (e) {
+                    console.error("Error fetching fav ETA:", e);
+                } finally {
+                    setLoading(false);
+                }
+            }, [fav]);
+
+            useEffect(() => {
+                fetchFavEta();
+                const interval = setInterval(fetchFavEta, 60000);
+                return () => clearInterval(interval);
+            }, [fetchFavEta]);
+
+            return (
+                <div className="p-3.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative group">
+                    <button
+                        onClick={() => toggleFavorite(fav)}
+                        className="absolute top-2.5 right-2.5 text-amber-500 hover:scale-110 transition"
+                        title="取消收藏"
+                    >
+                        <i className="fa-solid fa-star text-sm"></i>
+                    </button>
+
+                    <div className="mb-2 pr-6">
+                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 mr-2">
+                            {fav.type === 'BUS' ? `${fav.company} ${fav.route}` : fav.type === 'MTR' ? `${fav.lineName}` : fav.type === 'GMB' ? `小巴 ${fav.routeCode}` : '急症室'}
+                        </span>
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate block mt-1">
+                            {fav.stopName || fav.stationName || fav.hospName}
+                        </span>
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5">
-                      <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-700 font-semibold">{fav.type}</span>
-                      <span>{fav.route || fav.lineName || fav.cluster || ''}</span>
-                    </div>
-                  </div>
-                  <button onClick={() => toggleFavorite(fav)} className="p-1 text-amber-500 hover:scale-110 transition">
-                    <i className="fa-solid fa-star text-base"></i>
-                  </button>
+
+                    {loading ? (
+                        <div className="text-[11px] text-slate-400 py-1"><i className="fa-solid fa-spinner fa-spin mr-1"></i>載入中...</div>
+                    ) : fav.type === 'AEE' ? (
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="text-slate-500">大約輪候時間</span>
+                            <span className="font-bold text-red-600 dark:text-red-400">{etaList[0]?.waitingTime || '--'}</span>
+                        </div>
+                    ) : etaList.length > 0 ? (
+                        <div className="space-y-1">
+                            {etaList.map((item, idx) => {
+                                const timeVal = item.eta || item.time || item.timestamp;
+                                const rem = calculateRemainingMinutes(timeVal);
+                                const destStr = item.dest_tc ? item.dest_tc : item.dest ? (MTR_STATION_NAMES[item.dest] || item.dest) : null;
+                                return (
+                                    <div key={idx} className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-500 dark:text-slate-400 truncate mr-2">
+                                            {destStr ? `往 ${destStr}` : '下班車'}
+                                        </span>
+                                        <span className="font-bold text-sky-600 dark:text-sky-400 shrink-0">
+                                            {rem === null ? '--' : rem <= 0 ? '即將到站' : `${rem} 分鐘`}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="text-[11px] text-slate-400">現無班次數據</div>
+                    )}
                 </div>
-              ))}
-            </div>
-          </div>
-        );
-      }
+            );
+        }
 
       function App() {
         const [darkMode, setDarkMode] = useState(false);
