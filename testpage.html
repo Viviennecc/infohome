@@ -1127,42 +1127,70 @@
                     setErrorMsg('找不到該城巴路線');
                 }
             } else if (company === 'MTRB') {
-                const res = await fetch('https://rt.data.gov.hk/v1/transport/mtr/bus/getSchedule', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ language: 'zh', routeName: formattedRoute })
-                });
-                const data = await res.json();
+    try {
+        const res = await fetch('https://rt.data.gov.hk/v1/transport/mtr/bus/getSchedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ language: 'zh', routeName: formattedRoute })
+        });
 
-                if (data.busStop && data.busStop.length > 0) {
-                    const routeObj = {
-                        route: formattedRoute,
-                        orig_tc: data.busStop[0]?.busStopNameTa || '起點',
-                        dest_tc: data.busStop[data.busStop.length - 1]?.busStopNameTa || '目的地'
-                    };
-                    setSelectedRoute(routeObj);
-                    loadStops('MTRB', routeObj, 'outbound');
-                } else {
-                    setErrorMsg('找不到該港鐵巴士路線');
-                }
-            } else if (company === 'NLB') {
-                const res = await fetch('https://rt.data.gov.hk/v1/transport/nlb/route.php?action=list');
-                const data = await res.json();
-                const matched = data.routes?.find(r => r.routeName.toUpperCase() === formattedRoute);
+        if (!res.ok) throw new Error('MTRB API request failed');
+        const data = await res.json();
 
-                if (matched) {
-                    const routeNameParts = matched.routeName_c ? matched.routeName_c.split('>') : [];
-                    const routeObj = {
-                        route: matched.routeName,
-                        routeId: matched.routeId,
-                        orig_tc: routeNameParts[0]?.trim() || '起點',
-                        dest_tc: routeNameParts[1]?.trim() || '目的地'
-                    };
-                    setSelectedRoute(routeObj);
-                    loadStops('NLB', routeObj, 'outbound');
-                } else {
-                    setErrorMsg('找不到該大嶼山巴士路線');
-                }
+        if (Array.isArray(data?.busStop) && data.busStop.length > 0) {
+            const routeObj = {
+                route: formattedRoute,
+                orig_tc: data.busStop[0]?.busStopNameTa || '起點',
+                dest_tc: data.busStop[data.busStop.length - 1]?.busStopNameTa || '目的地'
+            };
+            setSelectedRoute(routeObj);
+            loadStops('MTRB', routeObj, 'outbound');
+        } else {
+            setErrorMsg('找不到該港鐵巴士路線');
+        }
+    } catch (err) {
+        console.error('MTRB Search Error:', err);
+        setErrorMsg('搜尋港鐵巴士路線時發生錯誤');
+    }
+} else if (company === 'NLB') {
+    try {
+        const res = await fetch('https://rt.data.gov.hk/v1/transport/nlb/route.php?action=list');
+
+        if (!res.ok) throw new Error('NLB API request failed');
+        const data = await res.json();
+
+        const routeList = Array.isArray(data?.routes) ? data.routes : [];
+        const matched = routeList.find(r => r.routeName && r.routeName.trim().toUpperCase() === formattedRoute);
+
+        if (matched) {
+            let orig = '起點';
+            let dest = '目的地';
+
+            if (matched.routeName_c) {
+                // Safely handle both '>' and '-' separators
+                const separator = matched.routeName_c.includes('>') ? '>' : '-';
+                const routeNameParts = matched.routeName_c.split(separator);
+                orig = routeNameParts[0]?.trim() || '起點';
+                dest = routeNameParts[1]?.trim() || '目的地';
+            }
+
+            const routeObj = {
+                route: matched.routeName,
+                routeId: matched.routeId,
+                orig_tc: orig,
+                dest_tc: dest
+            };
+            setSelectedRoute(routeObj);
+            loadStops('NLB', routeObj, 'outbound');
+        } else {
+            setErrorMsg('找不到該大嶼山巴士路線');
+        }
+    } catch (err) {
+        console.error('NLB Search Error:', err);
+        setErrorMsg('搜尋大嶼山巴士路線時發生錯誤');
+    }
+}
+
             } else if (company === 'DB') {
                 const matchedDb = DB_ROUTES_DATA[formattedRoute];
 
@@ -1219,39 +1247,63 @@
                 const data = await res.json();
                 setEtaList(data.data?.filter(item => item.eta) || []);
             } else if (company === 'MTRB') {
-                const res = await fetch('https://rt.data.gov.hk/v1/transport/mtr/bus/getSchedule', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ language: 'zh', routeName: selectedRoute.route })
-                });
-                const data = await res.json();
-                const matchedStop = data.busStop?.find(bs => bs.busStopId === stop.stopId);
+    try {
+        const res = await fetch('https://rt.data.gov.hk/v1/transport/mtr/bus/getSchedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ language: 'zh', routeName: selectedRoute.route })
+        });
 
-                if (matchedStop && matchedStop.bus) {
-                    const mapped = matchedStop.bus.map(b => ({
-                        eta: b.departureTime,
-                        dest_tc: b.busArrivalRemark || selectedRoute.dest_tc,
-                        rmk_tc: b.busStatus
-                    }));
-                    setEtaList(mapped);
-                } else {
-                    setEtaList([]);
-                }
-            } else if (company === 'NLB') {
-                const routeId = selectedRoute.routeId || selectedRoute.route;
-                const res = await fetch(`https://rt.data.gov.hk/v1/transport/nlb/stop.php?action=estimatedArrivals&routeId=${routeId}&stopId=${stop.stopId}`);
-                const data = await res.json();
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
 
-                if (data.estimatedArrivals && data.estimatedArrivals.length > 0) {
-                    const mapped = data.estimatedArrivals.map(e => ({
-                        eta: e.estimatedArrivalDateTime,
-                        dest_tc: e.destName_c || selectedRoute.dest_tc,
-                        rmk_tc: e.departed === '1' ? '已駛離' : (e.noGPS === '1' ? '預定班次' : '即將到達')
-                    }));
-                    setEtaList(mapped);
-                } else {
-                    setEtaList([]);
-                }
+        // Safe array check & loose equality check for ID matching
+        const matchedStop = Array.isArray(data?.busStop)
+            ? data.busStop.find(bs => String(bs.busStopId) === String(stop.stopId))
+            : null;
+
+        if (matchedStop && Array.isArray(matchedStop.bus)) {
+            const mapped = matchedStop.bus.map(b => ({
+                eta: b.arrivalTimeText || b.departureTimeText || '即將到達',
+                dest_tc: b.busRemark || selectedRoute.dest_tc,
+                rmk_tc: b.departureTimeText || ''
+            }));
+            setEtaList(mapped);
+        } else {
+            setEtaList([]);
+        }
+    } catch (err) {
+        console.error('MTRB Fetch Error:', err);
+        setEtaList([]);
+    }
+} else if (company === 'NLB') {
+    try {
+        const routeId = selectedRoute.routeId || selectedRoute.route;
+        const res = await fetch(
+            `https://rt.data.gov.hk/v2/transport/nlb/stop.php?action=estimatedArrivals&routeId=${routeId}&stopId=${stop.stopId}&language=zh`
+        );
+
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+
+        if (Array.isArray(data?.estimatedArrivals) && data.estimatedArrivals.length > 0) {
+            const mapped = data.estimatedArrivals.map(e => ({
+                eta: e.estimatedArrivalDateTime,
+                dest_tc: e.destName_c || selectedRoute.dest_tc,
+                rmk_tc: e.departed === 1 || e.departed === '1'
+                    ? '已駛離'
+                    : (e.noGPS === 1 || e.noGPS === '1' ? '預定班次' : '即將到達')
+            }));
+            setEtaList(mapped);
+        } else {
+            setEtaList([]);
+        }
+    } catch (err) {
+        console.error('NLB Fetch Error:', err);
+        setEtaList([]);
+    }
+}
+
             } else if (company === 'DB') {
                 setEtaList([
                     {
