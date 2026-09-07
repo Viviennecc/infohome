@@ -500,6 +500,7 @@
                     try {
                         const res = await fetch(`https://data.etagmb.gov.hk/route/${region}`);
                         const data = await res.json();
+                        // The endpoint returns data.data as an array of route code strings (e.g., ["1", "2", ...])
                         setRoutesList(data.data || []);
                     } catch (err) {
                         console.error("Error loading GMB routes:", err);
@@ -539,7 +540,7 @@
                 }
             };
 
-            const handleSelectDirection = async (dirInfo, routeCode, allDirections = routeDirections) => {
+            const handleSelectDirection = async (dirInfo, routeCode) => {
                 const code = routeCode || selectedRoute?.route_code;
                 setSelectedDirection(dirInfo);
                 setSelectedStop(null);
@@ -547,18 +548,15 @@
                 setLoadingStops(true);
                 try {
                     const bound = dirInfo.bound;
-                    const res = await fetch(`https://data.etagmb.gov.hk/route/${region}/${code}`);
-                    const data = await res.json();
-                    const matchedRoute = (data.data || []).find(d => String(d.bound) === String(bound));
+                    // Keep the full route direction object as selectedRoute so route_id is available
+                    setSelectedRoute(dirInfo);
                     
-                    if (matchedRoute) {
-                        setSelectedRoute(matchedRoute);
-                        const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${matchedRoute.route_id}/${bound}`);
-                        const sData = await sRes.json();
-                        setRouteStops(sData.data || []);
-                    }
+                    const sRes = await fetch(`https://data.etagmb.gov.hk/route-stop/${dirInfo.route_id}/${bound}`);
+                    const sData = await sRes.json();
+                    setRouteStops(sData.data || []);
                 } catch (err) {
                     console.error("Error fetching GMB stops for direction:", err);
+                    setRouteStops([]);
                 } finally {
                     setLoadingStops(false);
                 }
@@ -572,8 +570,10 @@
                     const bound = selectedDirection.bound;
                     const res = await fetch(`https://data.etagmb.gov.hk/eta/${selectedRoute.route_id}/${stop.stop_seq}`);
                     const data = await res.json();
-                    const matchedEta = (data.data || []).find(e => String(e.bound) === String(bound));
-                    setEtaData(matchedEta?.eta || []);
+                    // eta endpoint returns an array of items per bound/variant
+                    const list = data.data || [];
+                    const matchedEta = list.find(e => String(e.bound) === String(bound));
+                    setEtaData(matchedEta?.eta || (list.length > 0 ? list[0].eta : []));
                 } catch (err) {
                     console.error("Error fetching GMB ETA:", err);
                     setEtaData([]);
@@ -735,13 +735,13 @@
                                         {loadingEta ? (
                                             <div className="p-6 text-center text-slate-400 text-xs">
                                                 <i className="fa-solid fa-spinner fa-spin mr-2"></i>載入班次中...
-                                            </div>
+                        </div>
                                         ) : etaData.length > 0 ? (
                                             <div className="space-y-2">
                                                 {etaData.map((eta, i) => {
                                                     const remMins = calculateRemainingMinutes(eta.timestamp);
                                                     return (
-                                                        <div key={i} className="p-2.5 bg-white dark:bg-slate-800 returned-lg border border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs">
+                                                        <div key={i} className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 flex justify-between items-center text-xs">
                                                             <div>
                                                                 <span className="font-semibold text-slate-700 dark:text-slate-200">班次 {i + 1}</span>
                                                                 <span className="ml-2 text-[11px] text-slate-400">{eta.remarks_tc || '即時預測'}</span>
@@ -774,6 +774,7 @@
                 </div>
             );
         }
+
 
 
         function AeeSection({
