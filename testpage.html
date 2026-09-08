@@ -1526,159 +1526,7 @@
         );
       }
 
-     function FavoriteCard({ fav, toggleFavorite }) {
-  const [etaList, setEtaList] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchFavEta = useCallback(async () => {
-    setLoading(true);
-    try {
-      if (fav.type === 'BUS') {
-        let url =
-          fav.company === 'KMB'
-            ? `https://data.etabus.gov.hk/v1/transport/kmb/eta/${fav.stopId}/${fav.route}/1`
-            : `https://rt.data.gov.hk/v1/transport/citybus-nwfb/eta/ctb/${fav.stopId}/${fav.route}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        setEtaList(data.data ? data.data.filter((i) => i.eta).slice(0, 2) : []);
-      } else if (fav.type === 'MTR') {
-        const res = await fetch(
-          `https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=${fav.line}&sta=${fav.stationCode}&lang=TC`
-        );
-        const data = await res.json();
-        const key = `${fav.line}-${fav.stationCode}`;
-        if (data.status === 1 && data.data && data.data[key]) {
-          const up = data.data[key].UP || [];
-          const down = data.data[key].DOWN || [];
-          setEtaList([...up.slice(0, 1), ...down.slice(0, 1)]);
-        }
-      } else if (fav.type === 'GMB') {
-        const res = await fetch(
-          `https://data.etagmb.gov.hk/eta/route-stop/${fav.routeId}/1/${fav.stopSeq}`
-        );
-        const data = await res.json();
-        setEtaList(data.data?.eta ? data.data.eta.slice(0, 2) : []);
-      } else if (fav.type === 'AEE') {
-        const res = await fetch(
-          `https://www.ha.org.hk/opendata/aed/aedwtdata2-tc.json?_=${Date.now()}`
-        );
-        const data = await res.json();
-        const list = Array.isArray(data.waitTime)
-          ? data.waitTime
-          : Array.isArray(data.result)
-          ? data.result
-          : Array.isArray(data)
-          ? data
-          : [];
-
-        const match = list.find(
-          (h) => (h.hospName || h.hospname) === fav.hospName
-        );
-
-        if (match) {
-          const t1Val = match.t1wt || '0';
-          const t2Val = match.t2wt || '少於 15';
-          const t3Val = match.t3p50 || match.t3wt || '20';
-
-          const numericMins = parseInt(t3Val, 10) || 20;
-
-          let t4 = match.t4wt;
-          if (!t4) {
-            const t4Mins = Math.round(numericMins * 2.8);
-            t4 = t4Mins >= 60 ? `${(t4Mins / 60).toFixed(1)} 小時` : `${t4Mins} 分鐘`;
-          }
-
-          let t5 = match.t5wt;
-          if (!t5) {
-            t5 = `${((numericMins * 11) / 60).toFixed(1)} 小時`;
-          }
-
-          setEtaList([
-            {
-              isAee: true,
-              waitingTime: `第1級(T1): ${t1Val}分鐘 | 第2級(T2): ${t2Val}分鐘 | 第3級(T3): ${t3Val}分鐘 | 第4級(T4): ${t4} | 第5級(T5): ${t5}`,
-            },
-          ]);
-        }
-      }
-    } catch (e) {
-      console.error('Error fetching fav ETA:', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [fav]);
-
-  useEffect(() => {
-    fetchFavEta();
-    const interval = setInterval(fetchFavEta, 60000);
-    return () => clearInterval(interval);
-  }, [fetchFavEta]);
-
-  return (
-    <div className="p-3.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative group">
-      <button
-        onClick={() => toggleFavorite(fav)}
-        className="absolute top-2.5 right-2.5 text-amber-500 hover:scale-110 transition"
-        title="取消收藏"
-      >
-        <i className="fa-solid fa-star text-sm"></i>
-      </button>
-
-      <div className="mb-2 pr-6">
-        <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 mr-2">
-          {fav.type === 'BUS'
-            ? `${fav.company} ${fav.route}`
-            : fav.type === 'MTR'
-            ? `${fav.lineName}`
-            : fav.type === 'GMB'
-            ? `小巴 ${fav.routeCode}`
-            : '急症室'}
-        </span>
-        <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate block mt-1">
-          {fav.stopName || fav.stationName || fav.hospName}
-        </span>
-      </div>
-
-      {loading ? (
-        <div className="text-[11px] text-slate-400 py-1">
-          <i className="fa-solid fa-spinner fa-spin mr-1"></i>載入中...
-        </div>
-      ) : fav.type === 'AEE' ? (
-        <div className="flex justify-between items-center text-xs">
-          <span className="text-slate-500">大約輪候時間</span>
-          <span className="font-bold text-red-600 dark:text-red-400">
-            {etaList[0]?.waitingTime || '--'}
-          </span>
-        </div>
-      ) : etaList.length > 0 ? (
-        <div className="space-y-1">
-          {etaList.map((item, idx) => {
-            const timeVal = item.eta || item.time || item.timestamp;
-            const rem = calculateRemainingMinutes(timeVal);
-            const destStr = item.dest_tc
-              ? item.dest_tc
-              : item.dest
-              ? MTR_STATION_NAMES[item.dest] || item.dest
-              : null;
-            return (
-              <div key={idx} className="flex justify-between items-center text-xs">
-                <span className="text-slate-500 dark:text-slate-400 truncate mr-2">
-                  {destStr ? `往 ${destStr}` : '下班車'}
-                </span>
-                <span className="font-bold text-sky-600 dark:text-sky-400 shrink-0">
-                  {rem === null ? '--' : rem <= 0 ? '即將到站' : `${rem} 分鐘`}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-[11px] text-slate-400">現無班次數據</div>
-      )}
-    </div>
-  );
-}
-
+    
       function App() {
         const [darkMode, setDarkMode] = useState(false);
         const [favorites, setFavorites] = useState([]);
@@ -1734,7 +1582,7 @@
               {activeTab === 'GMB' && <GmbSection toggleFavorite={toggleFavorite} isFavorite={isFavorite} />}
               {activeTab === 'MTR' && <MtrSection toggleFavorite={toggleFavorite} isFavorite={isFavorite} />}
               {activeTab === 'AEE' && <AeeSection toggleFavorite={toggleFavorite} isFavorite={isFavorite} />}
-              {activeTab === 'FAV' && <FavoritesSection favorites={favorites} toggleFavorite={toggleFavorite} />}
+              
             </main>
 
             {/* iOS Bottom Navigation Bar */}
@@ -1745,7 +1593,7 @@
                 { key: 'GMB', label: '小巴', icon: 'fa-van-shuttle' },
                 { key: 'MTR', label: '港鐵', icon: 'fa-train-subway' },
                 { key: 'AEE', label: '急症室', icon: 'fa-hospital' },
-                { key: 'FAV', label: '最愛', icon: 'fa-star' }
+                
               ].map(tab => (
                 <button
                   key={tab.key}
