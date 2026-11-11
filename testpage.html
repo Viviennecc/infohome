@@ -243,16 +243,18 @@
           ]
         },
         EAL: {
-          name: '東鐵綫', color: 'bg-sky-500', code: 'EAL',
-          stations: [
-            { code: 'ADM', name: '金鐘' }, { code: 'EXC', name: '會展' }, { code: 'HUH', name: '紅磡' },
-            { code: 'MKK', name: '旺角東' }, { code: 'KOT', name: '九龍塘' }, { code: 'TAW', name: '大圍' },
-            { code: 'SHT', name: '沙田' }, { code: 'FOT', name: '火炭' }, { code: 'RAC', name: '馬場' },
-            { code: 'UNI', name: '大學' }, { code: 'TAP', name: '大埔墟' }, { code: 'TWO', name: '太和' },
-            { code: 'FAN', name: '粉嶺' }, { code: 'SHS', name: '上水' }, { code: 'LOW', name: '羅湖' },
-            { code: 'LMC', name: '落馬洲' }
-          ]
-        },
+  name: '東鐵綫', color: 'bg-sky-500', code: 'EAL',
+  stations: [
+    { code: 'ADM', name: '金鐘' }, { code: 'EXC', name: '會展' }, { code: 'HUH', name: '紅磡' },
+    { code: 'MKK', name: '旺角東' }, { code: 'KOT', name: '九龍塘' }, { code: 'TAW', name: '大圍' },
+    { code: 'SHT', name: '沙田', next: ['FOT', 'RAC'] }, // 👈 標示分叉
+    { code: 'FOT', name: '火炭', next: ['UNI'] },
+    { code: 'RAC', name: '馬場', next: ['UNI'], isBranch: true }, // 👈 標示為支線
+    { code: 'UNI', name: '大學' }, { code: 'TAP', name: '大埔墟' }, { code: 'TWO', name: '太和' },
+    { code: 'FAN', name: '粉嶺' }, { code: 'SHS', name: '上水' }, { code: 'LOW', name: '羅湖' },
+    { code: 'LMC', name: '落馬洲' }
+  ]
+},
         TML: {
           name: '屯馬綫', color: 'bg-amber-600', code: 'TML',
           stations: [
