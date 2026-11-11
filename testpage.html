@@ -192,135 +192,215 @@
     <script type="text/babel">
       const { useState, useEffect, useCallback, useMemo } = React;
 
-      // Static Data Definition for MTR Lines and Stations
-      const MTR_DATA = {
-        KTL: {
-          name: '觀塘綫', color: 'bg-emerald-600', code: 'KTL',
-          stations: [
-            { code: 'WHA', name: '黃埔' }, { code: 'HOM', name: '何文田' }, { code: 'YMT', name: '油麻地' },
-            { code: 'MOK', name: '旺角' }, { code: 'PRE', name: '太子' }, { code: 'SKM', name: '石硤尾' },
-            { code: 'KOT', name: '九龍塘' }, { code: 'LOF', name: '樂富' }, { code: 'WTS', name: '黃大仙' },
-            { code: 'DIH', name: '鑽石山' }, { code: 'CHH', name: '彩虹' }, { code: 'KOB', name: '九龍灣' },
-            { code: 'NTK', name: '牛頭角' }, { code: 'KWT', name: '觀塘' }, { code: 'LAT', name: '藍田' },
-            { code: 'YAT', name: '油塘' }, { code: 'TIK', name: '調景嶺' }
-          ]
-        },
-        ISL: {
-          name: '港島綫', color: 'bg-blue-600', code: 'ISL',
-          stations: [
-            { code: 'KET', name: '堅尼地城' }, { code: 'HKU', name: '香港大學' }, { code: 'SYP', name: '西營盤' },
-            { code: 'SHW', name: '上環' }, { code: 'CEN', name: '中環' }, { code: 'ADM', name: '金鐘' },
-            { code: 'WAC', name: '灣仔' }, { code: 'CAB', name: '銅鑼灣' }, { code: 'TIH', name: '天后' },
-            { code: 'FOH', name: '炮台山' }, { code: 'NOP', name: '北角' }, { code: 'QUB', name: '鰂魚涌' },
-            { code: 'TAK', name: '太古' }, { code: 'SWH', name: '西灣河' }, { code: 'SKW', name: '筲箕灣' },
-            { code: 'HFC', name: '杏花邨' }, { code: 'CHW', name: '柴灣' }
-          ]
-        },
-        TWL: {
-          name: '荃灣綫', color: 'bg-red-600', code: 'TWL',
-          stations: [
-            { code: 'CEN', name: '中環' }, { code: 'ADM', name: '金鐘' }, { code: 'TST', name: '尖沙咀' },
-            { code: 'JOR', name: '佐敦' }, { code: 'YMT', name: '油麻地' }, { code: 'MOK', name: '旺角' },
-            { code: 'PRE', name: '太子' }, { code: 'SSP', name: '深水埗' }, { code: 'CSW', name: '長沙灣' },
-            { code: 'LCK', name: '荔枝角' }, { code: 'MEI', name: '美孚' }, { code: 'LAK', name: '荔景' },
-            { code: 'KWF', name: '葵芳' }, { code: 'KWH', name: '葵興' }, { code: 'TWH', name: '大窩口' },
-            { code: 'TSW', name: '荃灣' }
-          ]
-        },
-        SIL: {
-          name: '南港島綫', color: 'bg-lime-500', code: 'SIL',
-          stations: [
-            { code: 'ADM', name: '金鐘' }, { code: 'OCP', name: '海洋公園' }, { code: 'WCH', name: '黃竹坑' },
-            { code: 'LET', name: '利東' }, { code: 'SOH', name: '海怡半島' }
-          ]
-        },
-        TKL: {
-          name: '將軍澳綫', color: 'bg-purple-600', code: 'TKL',
-          stations: [
-            { code: 'NOP', name: '北角' }, { code: 'QUB', name: '鰂魚涌' }, { code: 'YAT', name: '油塘' },
-            { code: 'TIK', name: '調景嶺' }, { code: 'TKO', name: '將軍澳' }, { code: 'HAH', name: '坑口' },
-            { code: 'POA', name: '寶琳' }, { code: 'LHP', name: '康城' }
-          ]
-        },
-         EAL: {
+      以下是更新後的完整程式碼。東鐵綫（EAL）已完整加入 馬場站（RAC） 支線定義，並強化了 parseTrainSpecialInfo 函數，能夠完美識別並標籤：
+ * 東鐵綫經馬場 / 經火炭班次
+ * 東鐵綫終點站非正常總站（如以大埔墟、沙田、旺角東等為終點的短途車）
+ * 其他各綫的特別班次與區間車
+完整更新程式碼
+// Static Data Definition for MTR Lines and Stations
+const MTR_DATA = {
+  KTL: {
+    name: '觀塘綫', color: 'bg-emerald-600', code: 'KTL',
+    stations: [
+      { code: 'WHA', name: '黃埔' }, { code: 'HOM', name: '何文田' }, { code: 'YMT', name: '油麻地' },
+      { code: 'MOK', name: '旺角' }, { code: 'PRE', name: '太子' }, { code: 'SKM', name: '石硤尾' },
+      { code: 'KOT', name: '九龍塘' }, { code: 'LOF', name: '樂富' }, { code: 'WTS', name: '黃大仙' },
+      { code: 'DIH', name: '鑽石山' }, { code: 'CHH', name: '彩虹' }, { code: 'KOB', name: '九龍灣' },
+      { code: 'NTK', name: '牛頭角' }, { code: 'KWT', name: '觀塘' }, { code: 'LAT', name: '藍田' },
+      { code: 'YAT', name: '油塘' }, { code: 'TIK', name: '調景嶺' }
+    ]
+  },
+  ISL: {
+    name: '港島綫', color: 'bg-blue-600', code: 'ISL',
+    stations: [
+      { code: 'KET', name: '堅尼地城' }, { code: 'HKU', name: '香港大學' }, { code: 'SYP', name: '西營盤' },
+      { code: 'SHW', name: '上環' }, { code: 'CEN', name: '中環' }, { code: 'ADM', name: '金鐘' },
+      { code: 'WAC', name: '灣仔' }, { code: 'CAB', name: '銅鑼灣' }, { code: 'TIH', name: '天后' },
+      { code: 'FOH', name: '炮台山' }, { code: 'NOP', name: '北角' }, { code: 'QUB', name: '鰂魚涌' },
+      { code: 'TAK', name: '太古' }, { code: 'SWH', name: '西灣河' }, { code: 'SKW', name: '筲箕灣' },
+      { code: 'HFC', name: '杏花邨' }, { code: 'CHW', name: '柴灣' }
+    ]
+  },
+  TWL: {
+    name: '荃灣綫', color: 'bg-red-600', code: 'TWL',
+    stations: [
+      { code: 'CEN', name: '中環' }, { code: 'ADM', name: '金鐘' }, { code: 'TST', name: '尖沙咀' },
+      { code: 'JOR', name: '佐敦' }, { code: 'YMT', name: '油麻地' }, { code: 'MOK', name: '旺角' },
+      { code: 'PRE', name: '太子' }, { code: 'SSP', name: '深水埗' }, { code: 'CSW', name: '長沙灣' },
+      { code: 'LCK', name: '荔枝角' }, { code: 'MEI', name: '美孚' }, { code: 'LAK', name: '荔景' },
+      { code: 'KWF', name: '葵芳' }, { code: 'KWH', name: '葵興' }, { code: 'TWH', name: '大窩口' },
+      { code: 'TSW', name: '荃灣' }
+    ]
+  },
+  SIL: {
+    name: '南港島綫', color: 'bg-lime-500', code: 'SIL',
+    stations: [
+      { code: 'ADM', name: '金鐘' }, { code: 'OCP', name: '海洋公園' }, { code: 'WCH', name: '黃竹坑' },
+      { code: 'LET', name: '利東' }, { code: 'SOH', name: '海怡半島' }
+    ]
+  },
+  TKL: {
+    name: '將軍澳綫', color: 'bg-purple-600', code: 'TKL',
+    stations: [
+      { code: 'NOP', name: '北角' }, { code: 'QUB', name: '鰂魚涌' }, { code: 'YAT', name: '油塘' },
+      { code: 'TIK', name: '調景嶺' }, { code: 'TKO', name: '將軍澳' }, { code: 'HAH', name: '坑口' },
+      { code: 'POA', name: '寶琳' }, { code: 'LHP', name: '康城' }
+    ]
+  },
+  EAL: {
     name: '東鐵綫', color: 'bg-sky-500', code: 'EAL',
     stations: [
       { code: 'ADM', name: '金鐘' }, { code: 'EXC', name: '會展' }, { code: 'HUH', name: '紅磡' },
       { code: 'MKK', name: '旺角東' }, { code: 'KOT', name: '九龍塘' }, { code: 'TAW', name: '大圍' },
-      { code: 'SHT', name: '沙田' },
-      { code: 'RAC', name: '馬場', isBranch: true, via: '賽馬日行經' }, // 👈 馬場支線
-      { code: 'FOT', name: '火炭' },
+      { code: 'SHT', name: '沙田', next: ['FOT', 'RAC'] },
+      { code: 'RAC', name: '馬場', next: ['UNI'], isBranch: true, via: '賽馬日行經' }, // 👈 馬場支線
+      { code: 'FOT', name: '火炭', next: ['UNI'] },
       { code: 'UNI', name: '大學' }, { code: 'TAP', name: '大埔墟' }, { code: 'TWO', name: '太和' },
       { code: 'FAN', name: '粉嶺' }, { code: 'SHS', name: '上水' },
-      { code: 'LOW', name: '羅湖', isBranch: true },    // 👈 邊境分叉 1
-      { code: 'LMC', name: '落馬洲', isBranch: true }   // 👈 邊境分叉 2
+      { code: 'LOW', name: '羅湖', isBranch: true },
+      { code: 'LMC', name: '落馬洲', isBranch: true }
     ]
   },
-        TML: {
-          name: '屯馬綫', color: 'bg-amber-600', code: 'TML',
-          stations: [
-            { code: 'TUM', name: '屯門' }, { code: 'SIH', name: '兆康' }, { code: 'TIS', name: '天水圍' },
-            { code: 'LOP', name: '朗屏' }, { code: 'YUL', name: '元朗' }, { code: 'KSR', name: '錦上路' },
-            { code: 'TWW', name: '荃灣西' }, { code: 'MEF', name: '美孚' }, { code: 'NAC', name: '南昌' },
-            { code: 'AUS', name: '柯士甸' }, { code: 'ETS', name: '尖東' }, { code: 'HUH', name: '紅磡' },
-            { code: 'HOM', name: '何文田' }, { code: 'TKW', name: '土瓜灣' }, { code: 'SUW', name: '宋皇臺' },
-            { code: 'KAT', name: '啟德' }, { code: 'DIH', name: '鑽石山' }, { code: 'HIK', name: '顯徑' },
-            { code: 'TAW', name: '大圍' }, { code: 'CKT', name: '車公廟' }, { code: 'STW', name: '沙田圍' },
-            { code: 'CIO', name: '第一城' }, { code: 'SHM', name: '石門' }, { code: 'TSH', name: '大水坑' },
-            { code: 'HEO', name: '恒安' }, { code: 'MOS', name: '馬鞍山' }, { code: 'WKS', name: '烏溪沙' }
-          ]
-        },
-        TCL: {
-          name: '東涌綫', color: 'bg-orange-500', code: 'TCL',
-          stations: [
-            { code: 'HOK', name: '香港' }, { code: 'KOW', name: '九龍' }, { code: 'OLY', name: '奧運' },
-            { code: 'NAC', name: '南昌' }, { code: 'LAK', name: '荔景' }, { code: 'TSY', name: '青衣' },
-            { code: 'SUN', name: '欣澳' }, { code: 'TUC', name: '東涌' }
-          ]
-        },
-        AEL: {
-          name: '機場快綫', color: 'bg-teal-600', code: 'AEL',
-          stations: [
-            { code: 'HOK', name: '香港' }, { code: 'KOW', name: '九龍' }, { code: 'TSY', name: '青衣' },
-            { code: 'AIR', name: '機場' }, { code: 'AWE', name: '博覽館' }
-          ]
-        },
-        DRL: {
-          name: '迪士尼綫', color: 'bg-pink-500', code: 'DRL',
-          stations: [
-            { code: 'SUN', name: '欣澳' }, { code: 'DIS', name: '迪士尼' }
-          ]
-        }
-      };
+  TML: {
+    name: '屯馬綫', color: 'bg-amber-600', code: 'TML',
+    stations: [
+      { code: 'TUM', name: '屯門' }, { code: 'SIH', name: '兆康' }, { code: 'TIS', name: '天水圍' },
+      { code: 'LOP', name: '朗屏' }, { code: 'YUL', name: '元朗' }, { code: 'KSR', name: '錦上路' },
+      { code: 'TWW', name: '荃灣西' }, { code: 'MEF', name: '美孚' }, { code: 'NAC', name: '南昌' },
+      { code: 'AUS', name: '柯士甸' }, { code: 'ETS', name: '尖東' }, { code: 'HUH', name: '紅磡' },
+      { code: 'HOM', name: '何文田' }, { code: 'TKW', name: '土瓜灣' }, { code: 'SUW', name: '宋皇臺' },
+      { code: 'KAT', name: '啟德' }, { code: 'DIH', name: '鑽石山' }, { code: 'HIK', name: '顯徑' },
+      { code: 'TAW', name: '大圍' }, { code: 'CKT', name: '車公廟' }, { code: 'STW', name: '沙田圍' },
+      { code: 'CIO', name: '第一城' }, { code: 'SHM', name: '石門' }, { code: 'TSH', name: '大水坑' },
+      { code: 'HEO', name: '恒安' }, { code: 'MOS', name: '馬鞍山' }, { code: 'WKS', name: '烏溪沙' }
+    ]
+  },
+  TCL: {
+    name: '東涌綫', color: 'bg-orange-500', code: 'TCL',
+    stations: [
+      { code: 'HOK', name: '香港' }, { code: 'KOW', name: '九龍' }, { code: 'OLY', name: '奧運' },
+      { code: 'NAC', name: '南昌' }, { code: 'LAK', name: '荔景' }, { code: 'TSY', name: '青衣' },
+      { code: 'SUN', name: '欣澳' }, { code: 'TUC', name: '東涌' }
+    ]
+  },
+  AEL: {
+    name: '機場快綫', color: 'bg-teal-600', code: 'AEL',
+    stations: [
+      { code: 'HOK', name: '香港' }, { code: 'KOW', name: '九龍' }, { code: 'TSY', name: '青衣' },
+      { code: 'AIR', name: '機場' }, { code: 'AWE', name: '博覽館' }
+    ]
+  },
+  DRL: {
+    name: '迪士尼綫', color: 'bg-pink-500', code: 'DRL',
+    stations: [
+      { code: 'SUN', name: '欣澳' }, { code: 'DIS', name: '迪士尼' }
+    ]
+  }
+};
 
-      const MTR_STATION_NAMES = {};
-      Object.values(MTR_DATA).forEach(line => {
-        line.stations.forEach(sta => {
-          MTR_STATION_NAMES[sta.code] = sta.name;
-        });
-      });
-      MTR_STATION_NAMES['DIS'] = '迪士尼';
+const MTR_STATION_NAMES = {};
+Object.values(MTR_DATA).forEach(line => {
+  line.stations.forEach(sta => {
+    MTR_STATION_NAMES[sta.code] = sta.name;
+  });
+});
+MTR_STATION_NAMES['DIS'] = '迪士尼';
 
-      // Safe number formatting helper
-      const formatNumberDecimal = (val) => {
-        if (val === null || val === undefined || val === '' || isNaN(val)) return '--';
-        return Number(val).toFixed(1);
-      };
+// Safe number formatting helper
+const formatNumberDecimal = (val) => {
+  if (val === null || val === undefined || val === '' || isNaN(val)) return '--';
+  return Number(val).toFixed(1);
+};
 
-      // Safari-compatible date parser for remaining time calculation
-      function calculateRemainingMinutes(timeStr) {
-        if (!timeStr) return null;
-        try {
-          const formattedStr = String(timeStr).trim().replace(' ', 'T');
-          const targetTime = new Date(formattedStr).getTime();
-          if (isNaN(targetTime)) return null;
-          const now = new Date().getTime();
-          const diffMs = targetTime - now;
-          return Math.floor(diffMs / 60000);
-        } catch (e) {
-          return null;
-        }
-      }
+// Safari-compatible date parser for remaining time calculation
+function calculateRemainingMinutes(timeStr) {
+  if (!timeStr) return null;
+  try {
+    const formattedStr = String(timeStr).trim().replace(' ', 'T');
+    const targetTime = new Date(formattedStr).getTime();
+    if (isNaN(targetTime)) return null;
+    const now = new Date().getTime();
+    const diffMs = targetTime - now;
+    return Math.floor(diffMs / 60000);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * 完整解析特別班次與經馬場班次資訊
+ */
+function parseTrainSpecialInfo(lineCode, currStationCode, scheduleData) {
+  const destCode = scheduleData.dest;
+  const destName = MTR_STATION_NAMES[destCode] || destCode;
+  
+  let isSpecial = false;
+  let tagText = '';
+
+  // 1. 東鐵綫 (EAL) 經馬場 / 經火炭及短途車判斷
+  if (lineCode === 'EAL') {
+    if (scheduleData.route === 'RAC' || scheduleData.via === 'RAC' || currStationCode === 'RAC') {
+      isSpecial = true;
+      tagText = '經馬場';
+    } else if (scheduleData.route === 'FOT' || scheduleData.via === 'FOT') {
+      tagText = '經火炭';
+    }
+    
+    // 東鐵綫正常終點站：金鐘 (ADM)、羅湖 (LOW)、落馬洲 (LMC)
+    const normalTerminals = ['ADM', 'LOW', 'LMC'];
+    if (!normalTerminals.includes(destCode)) {
+      isSpecial = true;
+      tagText = tagText ? `${tagText} · 終點: ${destName}` : `以${destName}為終點站`;
+    }
+  } 
+  // 2. 其他路線特別班次判斷
+  else {
+    const lineStandardTerminals = {
+      KTL: ['WHA', 'TIK'],
+      ISL: ['KET', 'CHW'],
+      TWL: ['CEN', 'TSW'],
+      SIL: ['ADM', 'SOH'],
+      TKL: ['NOP', 'POA', 'LHP'],
+      TML: ['TUM', 'WKS'],
+      TCL: ['HOK', 'TUC']
+    };
+
+    const standardTerminals = lineStandardTerminals[lineCode] || [];
+    if (standardTerminals.length > 0 && !standardTerminals.includes(destCode)) {
+      isSpecial = true;
+      tagText = `特別班次 (往${destName})`;
+    }
+  }
+
+  return {
+    isSpecial,
+    tagText,
+    destName
+  };
+}
+
+/**
+ * 處理 API 班次陣列並加上剩餘分鐘與特別班次標記
+ */
+function processTrainSchedules(lineCode, stationCode, apiTrainList) {
+  if (!Array.isArray(apiTrainList)) return [];
+
+  return apiTrainList.map(train => {
+    const remainingMin = calculateRemainingMinutes(train.time || train.ttnt);
+    const specialInfo = parseTrainSpecialInfo(lineCode, stationCode, train);
+
+    return {
+      plat: train.plat,
+      destination: specialInfo.destName,
+      remainingMinutes: remainingMin,
+      timeString: train.time ? train.time.split(' ')[1].substring(0, 5) : '--:--',
+      isSpecial: specialInfo.isSpecial,
+      specialTag: specialInfo.tagText
+    };
+  });
+}
+
+
 
       const DB_ROUTES_DATA = {
         'DB01R': {
